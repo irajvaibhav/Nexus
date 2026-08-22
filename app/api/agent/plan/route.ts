@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { generateAgentPlan } from "@/lib/gemini";
-import { geocodeCity, getDailyForecast, bestUpcomingDay } from "@/lib/weather";
+import { geocodeCity, getDailyForecast, bestUpcomingDay, type DailyForecast } from "@/lib/weather";
 import { getAuthedUser } from "@/lib/require-user";
+import { getValidAccessToken, isDayFree } from "@/lib/google-calendar";
 import { NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -12,6 +13,32 @@ const supabase = createClient(
 function daysUntil(dateStr: string): number {
   const ms = new Date(dateStr).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0);
   return Math.round(ms / (1000 * 60 * 60 * 24));
+}
+
+async function pickBestFreeDay(
+  forecast: DailyForecast[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string
+): Promise<(DailyForecast & { calendarChecked: boolean }) | null> {
+  const best = bestUpcomingDay(forecast);
+  if (!best) return null;
+
+  const accessToken = await getValidAccessToken(supabase, userId);
+  if (!accessToken) return { ...best, calendarChecked: false };
+
+  const byPrecip = [...forecast].sort((a, b) => a.precipProbability - b.precipProbability);
+  for (const day of byPrecip) {
+    try {
+      if (await isDayFree(accessToken, day.date)) {
+        return { ...day, calendarChecked: true };
+      }
+    } catch {
+      return { ...best, calendarChecked: false };
+    }
+  }
+
+  return { ...best, calendarChecked: false };
 }
 
 export async function POST() {
@@ -51,9 +78,9 @@ export async function POST() {
         const geo = await geocodeCity(city);
         if (geo) {
           const forecast = await getDailyForecast(geo.lat, geo.lon);
-          const best = bestUpcomingDay(forecast);
+          const best = await pickBestFreeDay(forecast, supabase, userId);
           if (best) {
-            weatherNote = `Weather in ${city}: the best day in the next 7 days looks to be ${best.date} (${best.description.toLowerCase()}, ${best.tempMin}-${best.tempMax}°C, ${best.precipProbability}% chance of rain).`;
+            weatherNote = `Weather in ${city}: the best day in the next 7 days looks to be ${best.date} (${best.description.toLowerCase()}, ${best.tempMin}-${best.tempMax}°C, ${best.precipProbability}% chance of rain)${best.calendarChecked ? ", and your Google Calendar is free that day" : ""}.`;
           }
         }
       } catch {

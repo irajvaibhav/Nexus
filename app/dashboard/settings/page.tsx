@@ -1,12 +1,21 @@
 "use client";
 
 import { createClient } from "@/lib/supabase-browser";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 export default function SettingsPage() {
+  return (
+    <Suspense fallback={null}>
+      <SettingsPageInner />
+    </Suspense>
+  );
+}
+
+function SettingsPageInner() {
   const [supabase] = useState(() => createClient());
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -28,6 +37,12 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [calendarLoading, setCalendarLoading] = useState(true);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const calendarJustConnected = searchParams.get("calendar_connected") === "1";
+  const calendarError = searchParams.get("calendar_error") === "1";
+
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -44,6 +59,29 @@ export default function SettingsPage() {
       setAgentPermission(profile?.agent_permission || "recommend");
     })();
   }, [supabase]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/calendar/status");
+        const data = await res.json();
+        setCalendarConnected(!!data.connected);
+      } catch {
+        setCalendarConnected(false);
+      }
+      setCalendarLoading(false);
+    })();
+  }, []);
+
+  async function disconnectCalendar() {
+    setDisconnecting(true);
+    try {
+      await fetch("/api/calendar/disconnect", { method: "POST" });
+      setCalendarConnected(false);
+    } finally {
+      setDisconnecting(false);
+    }
+  }
 
   async function savePermission(level: string) {
     setAgentPermission(level);
@@ -252,6 +290,49 @@ export default function SettingsPage() {
             </label>
           ))}
         </div>
+      </section>
+
+      <section className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
+        <h2 className="text-base font-serif font-semibold text-[#1A1412]">Google Calendar</h2>
+        <p className="text-xs text-[#7C6E67] mt-1">
+          Connect your calendar so NEXUS can check you&apos;re free before suggesting a day, and add
+          renewal tasks directly to your calendar.
+        </p>
+
+        {calendarJustConnected && (
+          <p className="mt-3 text-sm text-emerald-600 font-medium">Google Calendar connected ✓</p>
+        )}
+        {calendarError && (
+          <p className="mt-3 text-sm text-red-600 font-medium">
+            Couldn&apos;t connect Google Calendar. Please try again.
+          </p>
+        )}
+
+        {calendarLoading ? (
+          <p className="mt-3 text-xs text-[#7C6E67]/60">Checking connection...</p>
+        ) : calendarConnected ? (
+          <div className="mt-3 flex items-center gap-3">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-[#F3F6F1] text-[#6E885B] font-semibold">
+              Connected
+            </span>
+            <button
+              onClick={disconnectCalendar}
+              disabled={disconnecting}
+              className="text-sm px-4 py-2 border border-[#E5DFD7] rounded-xl text-[#2E2724]
+                hover:bg-[#FAF8F5] transition-colors bg-white font-semibold cursor-pointer disabled:opacity-50"
+            >
+              {disconnecting ? "Disconnecting..." : "Disconnect"}
+            </button>
+          </div>
+        ) : (
+          <a
+            href="/api/auth/google"
+            className="mt-3 inline-block text-sm px-4 py-2 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-xl font-medium
+              transition-colors shadow-sm"
+          >
+            Connect Google Calendar
+          </a>
+        )}
       </section>
 
       <section className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">

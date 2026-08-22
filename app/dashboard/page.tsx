@@ -32,6 +32,9 @@ export default function DashboardPage() {
   const [city, setCity] = useState("");
   const [forecast, setForecast] = useState<DailyForecast[]>([]);
   const [weatherError, setWeatherError] = useState(false);
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [addingToCalendar, setAddingToCalendar] = useState(false);
+  const [addedToCalendar, setAddedToCalendar] = useState(false);
 
   const categories = mergeCategories(customCategories);
 
@@ -97,6 +100,18 @@ export default function DashboardPage() {
     })();
   }, [city]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/calendar/status");
+        const data = await res.json();
+        setCalendarConnected(!!data.connected);
+      } catch {
+        setCalendarConnected(false);
+      }
+    })();
+  }, []);
+
   const expiringSoonCount = deadlines.filter((d) => daysLeft(d.expiry_date) <= 30).length;
   const nearestDeadline = deadlines.length > 0 ? deadlines[0] : null;
   const nearestDays = nearestDeadline ? daysLeft(nearestDeadline.expiry_date) : null;
@@ -109,6 +124,25 @@ export default function DashboardPage() {
   function goAsk(question?: string) {
     const q = (question ?? askInput).trim();
     router.push(q ? `/dashboard/ask?q=${encodeURIComponent(q)}` : "/dashboard/ask");
+  }
+
+  async function addToCalendar() {
+    if (!nearestDeadline || !suggestedDay) return;
+    setAddingToCalendar(true);
+    try {
+      const res = await fetch("/api/calendar/create-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `Renew ${nearestDeadline.title}`,
+          description: `NEXUS reminder: ${nearestDeadline.title} expires on ${new Date(nearestDeadline.expiry_date).toLocaleDateString()}.`,
+          dateISO: suggestedDay.date,
+        }),
+      });
+      if (res.ok) setAddedToCalendar(true);
+    } finally {
+      setAddingToCalendar(false);
+    }
   }
 
   return (
@@ -274,7 +308,7 @@ export default function DashboardPage() {
                     for weather-aware timing.
                   </p>
                 )}
-                <div className="mt-4">
+                <div className="mt-4 space-y-2">
                   <button
                     onClick={() => goAsk(`What do I need to know to renew my ${nearestDeadline.title}?`)}
                     className="w-full py-2 bg-[#D95D39] text-white rounded-xl text-sm
@@ -282,6 +316,16 @@ export default function DashboardPage() {
                   >
                     Ask NEXUS about it
                   </button>
+                  {calendarConnected && suggestedDay && (
+                    <button
+                      onClick={addToCalendar}
+                      disabled={addingToCalendar || addedToCalendar}
+                      className="w-full py-2 border border-[#E5DFD7] text-[#2E2724] rounded-xl text-sm
+                        font-medium hover:bg-[#FAF8F5] transition-colors bg-white disabled:opacity-60"
+                    >
+                      {addedToCalendar ? "Added to Calendar ✓" : addingToCalendar ? "Adding..." : "Add to Google Calendar"}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
