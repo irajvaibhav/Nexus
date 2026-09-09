@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { getAuthedUser } from "@/lib/require-user";
+import { getAgentLevel, allows, deniedMessage } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -19,6 +20,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const userId = authedUser.id;
+
+    const level = await getAgentLevel(supabase, userId);
+    if (!allows(level, "prepare")) {
+      return NextResponse.json(
+        { error: deniedMessage("prepare", level), required: "prepare", current: level },
+        { status: 403 }
+      );
+    }
 
     const { items } = await request.json();
 

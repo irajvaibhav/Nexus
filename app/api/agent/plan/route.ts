@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { generateAgentPlan } from "@/lib/gemini";
 import { geocodeCity, getDailyForecast, bestUpcomingDay, type DailyForecast } from "@/lib/weather";
 import { getAuthedUser } from "@/lib/require-user";
+import { getAgentLevel, allows, deniedMessage } from "@/lib/permissions";
 import { getValidAccessToken, isDayFree } from "@/lib/google-calendar";
 import { NextResponse } from "next/server";
 
@@ -48,6 +49,14 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const userId = authedUser.id;
+
+    const level = await getAgentLevel(supabase, userId);
+    if (!allows(level, "recommend")) {
+      return NextResponse.json(
+        { error: deniedMessage("recommend", level), required: "recommend", current: level },
+        { status: 403 }
+      );
+    }
 
     const { data: deadlines } = await supabase
       .from("deadlines")

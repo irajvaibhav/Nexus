@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { getAuthedUser } from "@/lib/require-user";
+import { getAgentLevel, allows, deniedMessage } from "@/lib/permissions";
 import { getValidAccessToken, createCalendarEvent } from "@/lib/google-calendar";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -13,6 +14,14 @@ export async function POST(request: NextRequest) {
     const authedUser = await getAuthedUser();
     if (!authedUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const level = await getAgentLevel(supabase, authedUser.id);
+    if (!allows(level, "execute")) {
+      return NextResponse.json(
+        { error: deniedMessage("execute", level), required: "execute", current: level },
+        { status: 403 }
+      );
     }
 
     const { title, description, dateISO } = await request.json();
