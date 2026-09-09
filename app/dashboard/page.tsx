@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import { mergeCategories, type CustomCategoryRow } from "@/lib/categories";
 import { daysLeft, daysLabel, badgeColorFor } from "@/lib/dates";
+import { docHealth, LOW_CONFIDENCE_THRESHOLD } from "@/lib/doc-status";
 import { detectConflicts, type ConflictGroup } from "@/lib/conflicts";
 import { geocodeCity, getDailyForecast, bestUpcomingDay, type DailyForecast } from "@/lib/weather";
 import { useEffect, useState } from "react";
@@ -16,38 +17,54 @@ type Deadline = {
   document_id: string;
 };
 
+type DocRow = {
+  id: string;
+  file_name: string;
+  doc_category: string | null;
+  status: string;
+};
+
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export default function DashboardPage() {
   const [supabase] = useState(() => createClient());
   const router = useRouter();
   const [name, setName] = useState("User");
-  const [docCount, setDocCount] = useState(0);
+  const [docs, setDocs] = useState<DocRow[]>([]);
   const [fieldsCount, setFieldsCount] = useState(0);
+  const [needsReviewIds, setNeedsReviewIds] = useState<Set<string>>(new Set());
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
-  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
   const [customCategories, setCustomCategories] = useState<CustomCategoryRow[]>([]);
   const [conflicts, setConflicts] = useState<ConflictGroup[]>([]);
-  const [docFileNames, setDocFileNames] = useState<Map<string, string>>(new Map());
   const [askInput, setAskInput] = useState("");
   const [city, setCity] = useState("");
+  const [agentPermission, setAgentPermission] = useState("recommend");
   const [forecast, setForecast] = useState<DailyForecast[]>([]);
   const [weatherError, setWeatherError] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [addingToCalendar, setAddingToCalendar] = useState(false);
   const [addedToCalendar, setAddedToCalendar] = useState(false);
+  const [calendarError, setCalendarError] = useState("");
 
   const categories = mergeCategories(customCategories);
+  const docFileNames = new Map(docs.map((d) => [d.id, d.file_name]));
 
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        setName(user.user_metadata?.full_name || "User");
+        setName(user.user_metadata?.full_name?.split(" ")[0] || "there");
       }
 
-      const [{ count: docs }, { count: fields }, { count: openTasks }, { data: deadlineRows }, { data: docRows }, { data: catRows }, { data: fieldRows }, { data: allDocs }, { data: profile }] =
+      const [{ data: docRows }, { count: fields }, { count: openTasks }, { data: deadlineRows }, { data: catRows }, { data: fieldRows }, { data: profile }] =
         await Promise.all([
-          supabase.from("documents").select("*", { count: "exact", head: true }),
+          supabase.from("documents").select("id, file_name, doc_category, status"),
           supabase.from("document_fields").select("*", { count: "exact", head: true }),
           supabase.from("tasks").select("*", { count: "exact", head: true }).eq("done", false),
           supabase
@@ -55,30 +72,29 @@ export default function DashboardPage() {
             .select("id, title, expiry_date, document_id")
             .eq("status", "active")
             .order("expiry_date", { ascending: true }),
-          supabase.from("documents").select("doc_category"),
           supabase.from("custom_categories").select("name, icon").order("created_at", { ascending: true }),
-          supabase.from("document_fields").select("document_id, field_name, field_value"),
-          supabase.from("documents").select("id, file_name"),
+          supabase.from("document_fields").select("document_id, field_name, field_value, confidence"),
           user
-            ? supabase.from("profiles").select("city").eq("id", user.id).single()
+            ? supabase.from("profiles").select("city, agent_permission").eq("id", user.id).single()
             : Promise.resolve({ data: null }),
         ]);
 
-      setDocCount(docs || 0);
+      setDocs(docRows || []);
       setFieldsCount(fields || 0);
       setOpenTasksCount(openTasks || 0);
       setDeadlines(deadlineRows || []);
       setCustomCategories(catRows || []);
       setConflicts(detectConflicts(fieldRows || []));
-      setDocFileNames(new Map((allDocs || []).map((d: { id: string; file_name: string }) => [d.id, d.file_name])));
-      setCity((profile as { city?: string } | null)?.city || "");
 
-      const counts: Record<string, number> = {};
-      for (const row of docRows || []) {
-        const cat = (row as { doc_category: string | null }).doc_category;
-        if (cat) counts[cat] = (counts[cat] || 0) + 1;
+      const review = new Set<string>();
+      for (const f of fieldRows || []) {
+        if ((f.confidence ?? 1) < LOW_CONFIDENCE_THRESHOLD) review.add(f.document_id);
       }
-      setCategoryCounts(counts);
+      setNeedsReviewIds(review);
+
+      const p = profile as { city?: string; agent_permission?: string } | null;
+      setCity(p?.city || "");
+      setAgentPermission(p?.agent_permission || "recommend");
     }
     load();
   }, [supabase]);
@@ -112,14 +128,32 @@ export default function DashboardPage() {
     })();
   }, []);
 
-  const expiringSoonCount = deadlines.filter((d) => daysLeft(d.expiry_date) <= 30).length;
   const nearestDeadline = deadlines.length > 0 ? deadlines[0] : null;
   const nearestDays = nearestDeadline ? daysLeft(nearestDeadline.expiry_date) : null;
+  const deadlinesByDoc = new Map<string, string[]>();
+  for (const d of deadlines) {
+    const list = deadlinesByDoc.get(d.document_id) || [];
+    list.push(d.expiry_date);
+    deadlinesByDoc.set(d.document_id, list);
+  }
+
+  const docsNeedingAttention = docs.filter((doc) => {
+    const key = docHealth({
+      status: doc.status,
+      lowConfidenceCount: needsReviewIds.has(doc.id) ? 1 : 0,
+      expiryDates: deadlinesByDoc.get(doc.id) || [],
+    }).key;
+    return key === "expired" || key === "expiring" || key === "needs_review";
+  });
+
+  const verifiedCount = docs.length - docsNeedingAttention.length;
+  const attentionCount = docsNeedingAttention.length + conflicts.length;
 
   const forecastWithinWindow = nearestDays !== null
     ? forecast.filter((_, i) => i <= Math.min(nearestDays, forecast.length - 1))
     : [];
   const suggestedDay = bestUpcomingDay(forecastWithinWindow);
+  const canExecute = agentPermission === "execute";
 
   function goAsk(question?: string) {
     const q = (question ?? askInput).trim();
@@ -129,6 +163,7 @@ export default function DashboardPage() {
   async function addToCalendar() {
     if (!nearestDeadline || !suggestedDay) return;
     setAddingToCalendar(true);
+    setCalendarError("");
     try {
       const res = await fetch("/api/calendar/create-event", {
         method: "POST",
@@ -139,89 +174,74 @@ export default function DashboardPage() {
           dateISO: suggestedDay.date,
         }),
       });
+      const data = await res.json();
       if (res.ok) setAddedToCalendar(true);
+      else setCalendarError(data.error || "Couldn't add it to your calendar.");
     } finally {
       setAddingToCalendar(false);
     }
   }
 
+  const summary =
+    docs.length === 0
+      ? "Upload your first document and NEXUS will start keeping track for you."
+      : attentionCount === 0
+      ? "Aaj kuch pending nahi hai. Everything's in order."
+      : attentionCount === 1
+      ? "1 thing needs your attention."
+      : `${attentionCount} things need your attention.`;
+
   return (
     <div className="max-w-6xl animate-fade-in-up">
       <h1 className="text-3xl font-serif font-semibold tracking-tight text-[#1A1412]">
-        Good morning, {name} 👋
+        {greeting()}, {name} 👋
       </h1>
-      <p className="text-[#7C6E67] mt-1 text-sm">
-        NEXUS is here to take care of your important things.
-      </p>
+      <p className="text-[#7C6E67] mt-1 text-sm">{summary}</p>
 
-      {conflicts.length > 0 && (
-        <div className="mt-4 rounded-2xl border border-[#E5DFD7] bg-[#FAF8F5] p-5">
-          <p className="text-sm font-semibold text-[#D95D39] flex items-center gap-2">
-            ⚠️ NEXUS found conflicting information
-          </p>
-          <div className="mt-2 space-y-2">
-            {conflicts.map((c) => (
-              <div key={c.label} className="text-sm text-[#7C6E67]">
-                <span className="font-semibold text-[#2E2724]">{c.label}:</span>{" "}
-                {c.entries.map((e, i) => (
-                  <span key={i}>
-                    {i > 0 && " vs "}
-                    &ldquo;{e.value}&rdquo; ({docFileNames.get(e.document_id) || "Unknown"})
-                  </span>
-                ))}
-                <button
-                  onClick={() => goAsk(`What is my correct ${c.label.toLowerCase()}?`)}
-                  className="ml-2 text-xs text-[#D95D39] underline hover:no-underline font-medium"
-                >
-                  Resolve with NEXUS
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* The single most important thing, chosen over everything else on the page. */}
+      {conflicts.length > 0 ? (
+        <AttentionCard
+          tone="urgent"
+          eyebrow="Conflicting information"
+          title={`Two documents disagree on your ${conflicts[0].label.toLowerCase()}`}
+          detail={conflicts[0].entries
+            .map((e) => `"${e.value}" (${docFileNames.get(e.document_id) || "Unknown"})`)
+            .join(" vs ")}
+          actionLabel="Resolve with NEXUS"
+          onAction={() => goAsk(`What is my correct ${conflicts[0].label.toLowerCase()}?`)}
+        />
+      ) : nearestDeadline && nearestDays !== null && nearestDays <= 30 ? (
+        <AttentionCard
+          tone={nearestDays < 0 ? "urgent" : "warning"}
+          eyebrow={nearestDays < 0 ? "Action needed" : "Expiring soon"}
+          title={`Your ${nearestDeadline.title} ${nearestDays < 0 ? "has expired" : `expires in ${daysLabel(nearestDays)}`}`}
+          detail={`From ${docFileNames.get(nearestDeadline.document_id) || "your documents"} · ${new Date(nearestDeadline.expiry_date).toLocaleDateString()}`}
+          actionLabel="Plan this renewal"
+          onAction={() => router.push("/dashboard/reminders")}
+        />
+      ) : docsNeedingAttention.length > 0 ? (
+        <AttentionCard
+          tone="warning"
+          eyebrow="Needs review"
+          title={`NEXUS wasn't sure about ${docsNeedingAttention[0].file_name}`}
+          detail="Check the details it pulled out and confirm or correct them."
+          actionLabel="Review it"
+          onAction={() => router.push(`/dashboard/documents/${docsNeedingAttention[0].id}`)}
+        />
+      ) : null}
 
-      <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          icon={<span className="w-8 h-8 rounded-full bg-[#FDF2EE] flex items-center justify-center text-[#D95D39] text-sm">⚠</span>}
-          label="Expiring Soon"
-          value={String(expiringSoonCount)}
-          sub="Documents need attention"
-          href="/dashboard/documents"
-          accentColor="bg-[#D95D39]"
-        />
-        <StatCard
-          icon={<span className="w-8 h-8 rounded-full bg-[#FEF9EC] flex items-center justify-center text-[#D48C2B] text-sm">📋</span>}
-          label="Tasks Due"
-          value={String(openTasksCount)}
-          sub="Open tasks"
-          href="/dashboard/tasks"
-          accentColor="bg-[#D48C2B]"
-        />
-        <StatCard
-          icon={<span className="w-8 h-8 rounded-full bg-[#F3F6F1] flex items-center justify-center text-[#6E885B] text-sm">✓</span>}
-          label="All Documents"
-          value={String(docCount)}
-          sub="Across all categories"
-          href="/dashboard/documents"
-          accentColor="bg-[#6E885B]"
-        />
-        <StatCard
-          icon={<span className="w-8 h-8 rounded-full bg-[#FDF1F5] flex items-center justify-center text-[#C05C7B] text-sm">✦</span>}
-          label="Information Ready"
-          value={String(fieldsCount)}
-          sub="Details extracted and ready"
-          href="/dashboard/documents"
-          accentColor="bg-[#C05C7B]"
-        />
+      <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+        <QuickAction label="Scan a document" icon="📄" href="/dashboard/documents" />
+        <QuickAction label="Ask NEXUS" icon="💬" href="/dashboard/ask" />
+        <QuickAction label="Fill a form" icon="🖊️" href="/dashboard/scan" />
+        <QuickAction label="Add a task" icon="✓" href="/dashboard/tasks" />
       </div>
 
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 space-y-6">
-
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-serif font-semibold text-[#1A1412]">Upcoming Reminders</h2>
+              <h2 className="text-lg font-serif font-semibold text-[#1A1412]">Coming up</h2>
               <Link href="/dashboard/reminders" className="text-xs text-[#D95D39] hover:underline font-medium">
                 View all →
               </Link>
@@ -229,19 +249,27 @@ export default function DashboardPage() {
             <div className="bg-white rounded-2xl border border-[#E5DFD7] divide-y divide-[#E5DFD7]/50">
               {deadlines.length === 0 ? (
                 <p className="px-4 py-6 text-sm text-[#7C6E67]/60 text-center">
-                  No upcoming deadlines. NEXUS will surface expiry dates it finds in your documents here.
+                  Nothing on the horizon. NEXUS will surface expiry dates it finds in your documents here.
                 </p>
               ) : (
                 deadlines.slice(0, 5).map((d) => {
                   const days = daysLeft(d.expiry_date);
                   return (
-                    <ReminderRow
-                      key={d.id}
-                      title={d.title}
-                      detail={`Expires on ${new Date(d.expiry_date).toLocaleDateString()}`}
-                      days={daysLabel(days)}
-                      badgeColor={badgeColorFor(days)}
-                    />
+                    <div key={d.id} className="flex items-center justify-between px-4 py-3
+                      hover:bg-[#FCFAF7] transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-2 h-2 rounded-full bg-[#E5DFD7] shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-[#2E2724] truncate">{d.title}</p>
+                          <p className="text-xs text-[#7C6E67]">
+                            Expires on {new Date(d.expiry_date).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`text-[11px] px-2 py-1 rounded-full font-medium shrink-0 ${badgeColorFor(days)}`}>
+                        {daysLabel(days)}
+                      </span>
+                    </div>
                   );
                 })
               )}
@@ -250,11 +278,20 @@ export default function DashboardPage() {
 
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-serif font-semibold text-[#1A1412]">Document Categories</h2>
+              <h2 className="text-lg font-serif font-semibold text-[#1A1412]">Your documents</h2>
               <Link href="/dashboard/documents" className="text-xs text-[#D95D39] hover:underline font-medium">
                 View all
               </Link>
             </div>
+
+            {docs.length > 0 && (
+              <p className="text-xs text-[#7C6E67] mb-3">
+                {docs.length} document{docs.length === 1 ? "" : "s"} → {verifiedCount} verified
+                {docsNeedingAttention.length > 0 && `, ${docsNeedingAttention.length} need${docsNeedingAttention.length === 1 ? "s" : ""} attention`}
+                {fieldsCount > 0 && ` · NEXUS knows ${fieldsCount} detail${fieldsCount === 1 ? "" : "s"} from them`}
+              </p>
+            )}
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {categories.map((cat) => (
                 <Link
@@ -269,7 +306,7 @@ export default function DashboardPage() {
                   </div>
                   <p className="text-xs font-semibold text-[#2E2724] mt-2.5">{cat.name}</p>
                   <p className="text-[11px] text-[#7C6E67] mt-0.5">
-                    {categoryCounts[cat.name] || 0} docs
+                    {docs.filter((d) => d.doc_category === cat.name).length} docs
                   </p>
                 </Link>
               ))}
@@ -282,49 +319,58 @@ export default function DashboardPage() {
             <div className="rounded-2xl border border-[#E5DFD7] overflow-hidden bg-[#FAF8F5]">
               <div className="p-4 border-b border-[#E5DFD7]/60">
                 <h3 className="text-sm font-semibold text-[#D95D39] flex items-center gap-2">
-                  ✨ NEXUS Suggestion
+                  ✨ NEXUS suggests
                 </h3>
               </div>
               <div className="p-4">
-                <p className="text-sm font-semibold text-[#2E2724]">
-                  Your {nearestDeadline.title} {nearestDays < 0 ? "has expired" : `expires in ${daysLabel(nearestDays)}`}.
-                </p>
                 {suggestedDay ? (
-                  <p className="text-xs text-[#7C6E67] mt-1">
+                  <p className="text-sm text-[#2E2724]">
                     {new Date(suggestedDay.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" })} looks
-                    like a good day in {city} — {suggestedDay.description.toLowerCase()}, {suggestedDay.tempMin}–{suggestedDay.tempMax}°C,{" "}
-                    {suggestedDay.precipProbability}% chance of rain.
+                    like the easiest day to sort this out in {city} — {suggestedDay.description.toLowerCase()},{" "}
+                    {suggestedDay.tempMin}–{suggestedDay.tempMax}°C, {suggestedDay.precipProbability}% chance of rain.
                   </p>
                 ) : city && !weatherError ? (
-                  <p className="text-xs text-[#7C6E67] mt-1">
-                    Checking the forecast for {city}&hellip;
-                  </p>
+                  <p className="text-sm text-[#7C6E67]">Checking the forecast for {city}&hellip;</p>
                 ) : (
-                  <p className="text-xs text-[#7C6E67] mt-1">
-                    Ask NEXUS for the details you need to renew it.{" "}
+                  <p className="text-sm text-[#7C6E67]">
                     <Link href="/dashboard/settings" className="text-[#D95D39] hover:underline font-medium">
-                      Add your city
+                      City add karo
                     </Link>{" "}
-                    for weather-aware timing.
+                    — NEXUS timing suggestions better karega.
                   </p>
                 )}
+
                 <div className="mt-4 space-y-2">
                   <button
-                    onClick={() => goAsk(`What do I need to know to renew my ${nearestDeadline.title}?`)}
+                    onClick={() => goAsk(`What do I need to renew my ${nearestDeadline.title}?`)}
                     className="w-full py-2 bg-[#D95D39] text-white rounded-xl text-sm
                       font-medium hover:bg-[#C24E2B] transition-colors shadow-sm"
                   >
                     Ask NEXUS about it
                   </button>
+
                   {calendarConnected && suggestedDay && (
-                    <button
-                      onClick={addToCalendar}
-                      disabled={addingToCalendar || addedToCalendar}
-                      className="w-full py-2 border border-[#E5DFD7] text-[#2E2724] rounded-xl text-sm
-                        font-medium hover:bg-[#FAF8F5] transition-colors bg-white disabled:opacity-60"
-                    >
-                      {addedToCalendar ? "Added to Calendar ✓" : addingToCalendar ? "Adding..." : "Add to Google Calendar"}
-                    </button>
+                    canExecute ? (
+                      <button
+                        onClick={addToCalendar}
+                        disabled={addingToCalendar || addedToCalendar}
+                        className="w-full py-2 border border-[#E5DFD7] text-[#2E2724] rounded-xl text-sm
+                          font-medium hover:bg-[#FAF8F5] transition-colors bg-white disabled:opacity-60"
+                      >
+                        {addedToCalendar ? "Added to Calendar ✓" : addingToCalendar ? "Adding..." : "Add to Google Calendar"}
+                      </button>
+                    ) : (
+                      <p className="text-[11px] text-[#7C6E67] leading-relaxed">
+                        NEXUS can add this to your calendar once you allow it to act.{" "}
+                        <Link href="/dashboard/settings" className="text-[#D95D39] hover:underline font-medium">
+                          Change in Settings
+                        </Link>
+                      </p>
+                    )
+                  )}
+
+                  {calendarError && (
+                    <p className="text-[11px] text-red-600">{calendarError}</p>
                   )}
                 </div>
               </div>
@@ -332,9 +378,9 @@ export default function DashboardPage() {
           )}
 
           <div className="bg-white rounded-2xl border border-[#E5DFD7] overflow-hidden">
-            <div className="p-4 border-b border-[#E5DFD7]/60 flex items-center justify-between">
+            <div className="p-4 border-b border-[#E5DFD7]/60">
               <h3 className="text-sm font-semibold text-[#1A1412] flex items-center gap-2">
-                💬 Ask Nexus
+                💬 Ask NEXUS
               </h3>
             </div>
             <div className="p-3 space-y-1.5">
@@ -350,7 +396,7 @@ export default function DashboardPage() {
                   value={askInput}
                   onChange={(e) => setAskInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && goAsk()}
-                  placeholder="Ask anything about your documents..."
+                  placeholder="Bol do / type karo..."
                   className="flex-1 px-3 py-2 bg-[#FCFAF7] border border-[#E5DFD7]
                     rounded-xl text-sm focus:outline-none focus:ring-2
                     focus:ring-[#D95D39] focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
@@ -364,48 +410,65 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          {openTasksCount > 0 && (
+            <Link
+              href="/dashboard/tasks"
+              className="block bg-white rounded-2xl border border-[#E5DFD7] p-4
+                hover:border-[#D95D39] transition-colors"
+            >
+              <p className="text-sm font-semibold text-[#2E2724]">
+                {openTasksCount} open task{openTasksCount === 1 ? "" : "s"}
+              </p>
+              <p className="text-xs text-[#7C6E67] mt-0.5">Things you decided to handle yourself →</p>
+            </Link>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function StatCard({ icon, label, value, sub, href, accentColor }: {
-  icon: React.ReactNode; label: string; value: string; sub: string; href: string; accentColor: string;
+function AttentionCard({ tone, eyebrow, title, detail, actionLabel, onAction }: {
+  tone: "urgent" | "warning";
+  eyebrow: string;
+  title: string;
+  detail: string;
+  actionLabel: string;
+  onAction: () => void;
 }) {
+  const styles = tone === "urgent"
+    ? { wrap: "border-[#F5DFD6] bg-[#FDF2EE]", eyebrow: "text-[#D95D39]" }
+    : { wrap: "border-[#FBEAC9] bg-[#FEF9EC]", eyebrow: "text-[#B9832A]" };
+
   return (
-    <Link href={href} className="bg-white rounded-2xl border border-[#E5DFD7] overflow-hidden
-      hover:-translate-y-1 hover:shadow-lg hover:shadow-[#D95D39]/5 transition-all duration-300 block">
-      <div className={`h-1.5 w-full ${accentColor}`} />
-      <div className="p-5">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold text-[#7C6E67] uppercase tracking-wider">{label}</p>
-          {icon}
-        </div>
-        <p className="text-3xl font-bold text-[#1A1412] tracking-tight">{value}</p>
-        <p className="text-[11px] text-[#7C6E67]/70 mt-1.5 leading-relaxed">{sub}</p>
-      </div>
+    <div className={`mt-5 rounded-2xl border p-5 ${styles.wrap}`}>
+      <p className={`text-[11px] font-semibold uppercase tracking-wider ${styles.eyebrow}`}>
+        {eyebrow}
+      </p>
+      <p className="text-base font-semibold text-[#1A1412] mt-1.5">{title}</p>
+      <p className="text-sm text-[#7C6E67] mt-1">{detail}</p>
+      <button
+        onClick={onAction}
+        className="mt-4 px-4 py-2 bg-[#D95D39] text-white rounded-xl text-sm font-semibold
+          hover:bg-[#C24E2B] transition-colors shadow-sm"
+      >
+        {actionLabel}
+      </button>
+    </div>
+  );
+}
+
+function QuickAction({ label, icon, href }: { label: string; icon: string; href: string }) {
+  return (
+    <Link
+      href={href}
+      className="bg-white rounded-2xl border border-[#E5DFD7] px-4 py-3.5 flex items-center gap-2.5
+        hover:border-[#D95D39] hover:-translate-y-0.5 transition-all duration-200"
+    >
+      <span className="text-lg">{icon}</span>
+      <span className="text-sm font-semibold text-[#2E2724]">{label}</span>
     </Link>
-  );
-}
-
-function ReminderRow({ title, detail, days, badgeColor }: {
-  title: string; detail: string; days: string; badgeColor: string;
-}) {
-  return (
-    <div className="flex items-center justify-between px-4 py-3 hover:bg-[#FCFAF7]
-      transition-colors">
-      <div className="flex items-center gap-3">
-        <div className="w-2 h-2 rounded-full bg-[#E5DFD7]" />
-        <div>
-          <p className="text-sm font-medium text-[#2E2724]">{title}</p>
-          <p className="text-xs text-[#7C6E67]">{detail}</p>
-        </div>
-      </div>
-      <span className={`text-[11px] px-2 py-1 rounded-full font-medium ${badgeColor}`}>
-        {days}
-      </span>
-    </div>
   );
 }
 
