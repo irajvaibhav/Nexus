@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase-browser";
 import { mergeCategories, type CustomCategoryRow } from "@/lib/categories";
 import { docHealth, LOW_CONFIDENCE_THRESHOLD, type HealthKey } from "@/lib/doc-status";
 import { daysLeft } from "@/lib/dates";
+import { deleteDocumentCascade } from "@/lib/delete-document";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, useCallback } from "react";
 
@@ -309,8 +310,7 @@ function DocumentsPageInner() {
   }
 
   async function deleteDocument(doc: Doc) {
-    await supabase.storage.from("Documents").remove([doc.file_path]);
-    await supabase.from("documents").delete().eq("id", doc.id);
+    await deleteDocumentCascade(supabase, doc);
     logActivity("delete", `Deleted ${doc.file_name}`);
     await loadDocs();
   }
@@ -326,8 +326,7 @@ function DocumentsPageInner() {
       .single();
 
     if (old) {
-      await supabase.storage.from("Documents").remove([old.file_path]);
-      await supabase.from("documents").delete().eq("id", old.id);
+      await deleteDocumentCascade(supabase, old);
       logActivity(
         "delete",
         `Replaced ${old.file_name} with ${duplicatePrompt.newFileName}`,

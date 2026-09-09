@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { daysLeft, daysLabel, badgeColorFor } from "@/lib/dates";
 import { docHealth, LOW_CONFIDENCE_THRESHOLD } from "@/lib/doc-status";
 import { isSensitiveField, maskValue } from "@/lib/sensitive";
+import { deleteDocumentCascade } from "@/lib/delete-document";
 import { useCallback, useEffect, useState } from "react";
 
 type Doc = {
@@ -44,6 +45,7 @@ export default function DocumentDetailPage() {
   const [fields, setFields] = useState<Field[]>([]);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [downloadUrl, setDownloadUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -71,10 +73,16 @@ export default function DocumentDetailPage() {
     setDeadlines(deadlineRows || []);
 
     if (docRow) {
-      const { data: signed } = await supabase.storage
-        .from("Documents")
-        .createSignedUrl(docRow.file_path, 3600);
+      // The browser ignores a download attribute on a cross-origin link, so the
+      // save link needs its own URL that carries a Content-Disposition header.
+      const [{ data: signed }, { data: signedDownload }] = await Promise.all([
+        supabase.storage.from("Documents").createSignedUrl(docRow.file_path, 3600),
+        supabase.storage
+          .from("Documents")
+          .createSignedUrl(docRow.file_path, 3600, { download: docRow.file_name }),
+      ]);
       setPreviewUrl(signed?.signedUrl || "");
+      setDownloadUrl(signedDownload?.signedUrl || "");
     }
 
     setLoading(false);
@@ -122,8 +130,7 @@ export default function DocumentDetailPage() {
   async function deleteDocument() {
     if (!doc) return;
     setDeleting(true);
-    await supabase.storage.from("Documents").remove([doc.file_path]);
-    await supabase.from("documents").delete().eq("id", doc.id);
+    await deleteDocumentCascade(supabase, doc);
     await logActivity(`Deleted ${doc.file_name}`);
     router.push("/dashboard/documents");
   }
@@ -203,10 +210,9 @@ export default function DocumentDetailPage() {
         >
           Ask about this
         </button>
-        {previewUrl && (
+        {downloadUrl && (
           <a
-            href={previewUrl}
-            download={doc.file_name}
+            href={downloadUrl}
             className="text-sm px-4 py-2 border border-[#E5DFD7] bg-white text-[#2E2724] rounded-xl
               font-medium hover:border-[#D95D39] transition-colors"
           >

@@ -146,7 +146,10 @@ export default function DashboardPage() {
     return key === "expired" || key === "expiring" || key === "needs_review";
   });
 
-  const verifiedCount = docs.length - docsNeedingAttention.length;
+  const stillReadingCount = docs.filter(
+    (d) => d.status === "processing" || d.status === "uploaded"
+  ).length;
+  const verifiedCount = docs.length - docsNeedingAttention.length - stillReadingCount;
   const attentionCount = docsNeedingAttention.length + conflicts.length;
 
   const forecastWithinWindow = nearestDays !== null
@@ -288,6 +291,7 @@ export default function DashboardPage() {
               <p className="text-xs text-[#7C6E67] mb-3">
                 {docs.length} document{docs.length === 1 ? "" : "s"} → {verifiedCount} verified
                 {docsNeedingAttention.length > 0 && `, ${docsNeedingAttention.length} need${docsNeedingAttention.length === 1 ? "s" : ""} attention`}
+                {stillReadingCount > 0 && `, ${stillReadingCount} still being read`}
                 {fieldsCount > 0 && ` · NEXUS knows ${fieldsCount} detail${fieldsCount === 1 ? "" : "s"} from them`}
               </p>
             )}

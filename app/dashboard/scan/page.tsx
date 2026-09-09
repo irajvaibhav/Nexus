@@ -206,6 +206,11 @@ export default function ScanFillPage() {
   const uncertainFields = fields.filter(
     (f) => f.value.trim().length > 0 && f.confidence < LOW_CONFIDENCE
   );
+  // A field NEXUS could see on the page but couldn't tie to a real PDF form
+  // field can't be written into the file, however it was filled in.
+  const manualFields = hasFillablePdf
+    ? fields.filter((f) => f.value.trim().length > 0 && !f.pdfFieldName)
+    : [];
 
   return (
     <div className="max-w-2xl animate-fade-in-up">
@@ -381,20 +386,30 @@ export default function ScanFillPage() {
               {formName}
             </p>
             <dl className="mt-4 space-y-3">
-              {fields.map((field, i) => (
-                <div key={i} className="flex items-baseline justify-between gap-4">
-                  <dt className="text-xs text-[#7C6E67] shrink-0 max-w-[45%]">{field.label}</dt>
-                  <dd
-                    className={`text-sm text-right break-words ${
-                      field.value.trim()
-                        ? "font-semibold text-[#2E2724]"
-                        : "text-[#7C6E67]/50 italic"
-                    }`}
-                  >
-                    {field.value.trim() || "left blank"}
-                  </dd>
-                </div>
-              ))}
+              {fields.map((field, i) => {
+                const manual = hasFillablePdf && field.value.trim().length > 0 && !field.pdfFieldName;
+                return (
+                  <div key={i} className="flex items-baseline justify-between gap-4">
+                    <dt className="text-xs text-[#7C6E67] shrink-0 max-w-[45%]">{field.label}</dt>
+                    <dd className="text-right break-words">
+                      <span
+                        className={`text-sm ${
+                          field.value.trim()
+                            ? "font-semibold text-[#2E2724]"
+                            : "text-[#7C6E67]/50 italic"
+                        }`}
+                      >
+                        {field.value.trim() || "left blank"}
+                      </span>
+                      {manual && (
+                        <span className="block text-[11px] text-[#D48C2B] mt-0.5">
+                          you&apos;ll need to write this one in yourself
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                );
+              })}
             </dl>
           </div>
 
@@ -402,6 +417,16 @@ export default function ScanFillPage() {
             <p className="mt-3 text-xs text-[#7C6E67]">
               {blankFields.length} field{blankFields.length === 1 ? "" : "s"} will be left blank for
               you to complete by hand.
+            </p>
+          )}
+
+          {manualFields.length > 0 && (
+            <p className="mt-2 text-xs text-[#8A6420] bg-[#FEF9EC] border border-[#FBEAC9]
+              rounded-xl px-3 py-2">
+              {manualFields.length} value{manualFields.length === 1 ? "" : "s"} can&apos;t be written
+              into this PDF — NEXUS can see {manualFields.length === 1 ? "that field" : "those fields"} on
+              the page, but the file has no real form field behind {manualFields.length === 1 ? "it" : "them"}.
+              Copy {manualFields.length === 1 ? "it" : "them"} in by hand after downloading.
             </p>
           )}
 
@@ -421,6 +446,17 @@ export default function ScanFillPage() {
                 disabled={filledFields.length === 0}
                 className="flex-1 min-w-[200px] py-2.5 bg-[#D95D39] text-white rounded-xl text-sm
                   font-semibold hover:bg-[#C24E2B] disabled:opacity-40 transition-colors shadow-sm"
+              >
+                {copiedAll ? "Copied ✓" : "Copy all values"}
+              </button>
+            )}
+            {hasFillablePdf && (
+              <button
+                onClick={copyAll}
+                disabled={filledFields.length === 0}
+                className="px-4 py-2.5 border border-[#E5DFD7] rounded-xl text-sm font-medium
+                  text-[#7C6E67] hover:border-[#D95D39] hover:text-[#D95D39] transition-colors
+                  bg-white disabled:opacity-40"
               >
                 {copiedAll ? "Copied ✓" : "Copy all values"}
               </button>

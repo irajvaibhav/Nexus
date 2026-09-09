@@ -48,6 +48,7 @@ function AskNexus() {
   const [userId, setUserId] = useState("");
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [attachment, setAttachment] = useState<{ base64: string; mimeType: string; url: string } | null>(null);
+  const [attachError, setAttachError] = useState("");
   const [listening, setListening] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -126,7 +127,13 @@ function AskNexus() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) return;
+    setAttachError("");
+
+    if (file.size > 10 * 1024 * 1024) {
+      setAttachError("That photo is over 10MB. Try a smaller one.");
+      e.target.value = "";
+      return;
+    }
 
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
@@ -341,6 +348,10 @@ function AskNexus() {
       </div>
 
       <div className="sticky bottom-0 bg-[#FCFAF7] pt-2">
+        {attachError && (
+          <p className="mb-2 text-xs text-red-600 font-medium">{attachError}</p>
+        )}
+
         {attachment && (
           <div className="mb-2 inline-flex items-center gap-2 bg-white border border-[#E5DFD7]
             rounded-xl px-2 py-1.5">
