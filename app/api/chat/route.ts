@@ -15,6 +15,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
 type Chunk = { chunk_text: string; document_id: string; page_number: number; similarity: number };
+type Attachment = { base64: string; mimeType: string };
 
 const entityTypeKeywords: Record<string, string> = {
   car: "Vehicle", vehicle: "Vehicle", bike: "Vehicle", scooter: "Vehicle",
@@ -86,10 +87,19 @@ export async function POST(request: NextRequest) {
     }
     const userId = authedUser.id;
 
-    const { question } = await request.json();
+    const { question, image } = await request.json();
 
-    if (!question) {
+    if (!question && !image) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    const attachment: Attachment | null =
+      image?.base64 && image?.mimeType
+        ? { base64: image.base64, mimeType: image.mimeType }
+        : null;
+
+    if (attachment) {
+      return await buildImageResponse(question || "", attachment, userId);
     }
 
     const targetLabel = questionTargetsConflictLabel(question);
@@ -112,6 +122,7 @@ export async function POST(request: NextRequest) {
         const answer = `I found conflicting information for your ${conflict.label}:\n${lines}\n\nWhich one should I use?`;
         const sources = conflict.entries.map((e) => ({
           file_name: docMap.get(e.document_id) || "Unknown",
+          document_id: e.document_id,
           page_number: 1,
           similarity: 100,
         }));
@@ -124,7 +135,7 @@ export async function POST(request: NextRequest) {
     if (isDocumentChecklistQuestion(question)) {
       const { data: docs } = await supabase
         .from("documents")
-        .select("file_name, doc_type, doc_category")
+        .select("id, file_name, doc_type, doc_category")
         .eq("user_id", userId);
 
       const existingDocsText = (docs || [])
@@ -137,8 +148,9 @@ export async function POST(request: NextRequest) {
       const matchedFiles = new Set<string>(result.matched_files || []);
       const sources = (docs || [])
         .filter((d: { file_name: string }) => matchedFiles.has(d.file_name))
-        .map((d: { file_name: string }) => ({
+        .map((d: { id: string; file_name: string }) => ({
           file_name: d.file_name,
+          document_id: d.id,
           page_number: 1,
           similarity: 100,
         }));
@@ -178,6 +190,67 @@ export async function POST(request: NextRequest) {
     const message = err instanceof Error ? err.message : "Chat failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+async function buildImageResponse(question: string, attachment: Attachment, userId: string) {
+  const [{ data: fields }, { data: docs }] = await Promise.all([
+    supabase
+      .from("document_fields")
+      .select("document_id, field_name, field_value")
+      .eq("user_id", userId),
+    supabase.from("documents").select("id, file_name").eq("user_id", userId),
+  ]);
+
+  const docMap = new Map(
+    (docs || []).map((d: { id: string; file_name: string }) => [d.id, d.file_name])
+  );
+
+  const knownInfo = (fields || [])
+    .map((f: { document_id: string; field_name: string; field_value: string }) =>
+      `- ${f.field_name}: ${f.field_value} (from ${docMap.get(f.document_id) || "Unknown"})`
+    )
+    .join("\n");
+
+  const prompt = `You are NEXUS, an AI life-administration assistant. The user has sent you a photo. Read it carefully and help them with it.
+
+KNOWN INFORMATION FROM THE USER'S OWN DOCUMENTS:
+${knownInfo || "(they haven't uploaded any documents yet)"}
+
+USER'S QUESTION: ${question || "What is this, and what do I need to do about it?"}
+
+RULES:
+- Answer based on what is actually visible in the photo.
+- If it's a form, list the fields it asks for. For each, say whether the KNOWN INFORMATION above already answers it - naming the document it came from - or whether the user needs to supply it themselves.
+- If it's a notice, bill or letter, summarize what it says and state any deadline or action it requires, but only if that is actually printed on it.
+- NEVER invent a value that is not visible in the photo or listed in the KNOWN INFORMATION.
+- If the photo is too blurry or cropped to read, say so plainly instead of guessing.
+- Keep it concise and direct. Do not use markdown formatting like ** or #.
+
+Answer:`;
+
+  const result = await model.generateContent([
+    { text: prompt },
+    { inlineData: { mimeType: attachment.mimeType, data: attachment.base64 } },
+  ]);
+  const answer = result.response.text();
+
+  const sources = (docs || [])
+    .filter((d: { file_name: string }) => answer.includes(d.file_name))
+    .map((d: { id: string; file_name: string }) => ({
+      file_name: d.file_name,
+      document_id: d.id,
+      page_number: 1,
+      similarity: 100,
+    }));
+
+  await logChatTurn(
+    question ? `${question} 📷` : "📷 Sent a photo",
+    answer,
+    sources,
+    userId
+  );
+
+  return NextResponse.json({ answer, sources });
 }
 
 async function buildResponse(question: string, chunks: Chunk[], userId: string) {
@@ -221,6 +294,7 @@ Answer:`;
 
   const sources = chunks.map((c) => ({
     file_name: docMap.get(c.document_id) || "Unknown",
+    document_id: c.document_id,
     page_number: c.page_number,
     similarity: Math.round(c.similarity * 100),
   }));
