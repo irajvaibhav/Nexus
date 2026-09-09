@@ -9,6 +9,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// A missing score means the model didn't tell us how sure it was, so fall to the
+// review side of the threshold rather than assuming the value is trustworthy.
+function normalizeConfidence(value: unknown): number {
+  const score = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(score)) return 0.5;
+  return Math.min(1, Math.max(0, score));
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authedUser = await getAuthedUser();
@@ -71,13 +79,14 @@ export async function POST(request: NextRequest) {
         field_name: string;
         field_value: string;
         page_number?: number;
+        confidence?: number;
       }) => ({
         document_id: documentId,
         user_id: userId,
         field_name: f.field_name,
         field_value: f.field_value,
         page_number: f.page_number || 1,
-        confidence: 0.95,
+        confidence: normalizeConfidence(f.confidence),
       }));
 
       await supabase.from("document_fields").insert(fieldRows);
@@ -163,6 +172,19 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    let duplicateOf: { id: string; file_name: string; uploaded_at: string } | null = null;
+    if (extracted.doc_type && extracted.doc_type !== "other") {
+      const { data: existing } = await supabase
+        .from("documents")
+        .select("id, file_name, uploaded_at")
+        .eq("user_id", userId)
+        .eq("doc_type", extracted.doc_type)
+        .neq("id", documentId)
+        .order("uploaded_at", { ascending: false })
+        .limit(1);
+      duplicateOf = existing?.[0] || null;
+    }
+
     return NextResponse.json({
       success: true,
       doc_type: extracted.doc_type,
@@ -170,6 +192,7 @@ export async function POST(request: NextRequest) {
       fields_count: extracted.fields?.length || 0,
       deadlines_count: extracted.deadlines?.length || 0,
       entities_count: extracted.entities?.length || 0,
+      duplicate_of: duplicateOf,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Processing failed";

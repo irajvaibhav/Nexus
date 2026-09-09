@@ -22,7 +22,8 @@ Respond ONLY with valid JSON, no markdown, no backticks, no explanation.
     {
       "field_name": "Name on document",
       "field_value": "extracted value",
-      "page_number": 1
+      "page_number": 1,
+      "confidence": 0.95
     }
   ],
   "deadlines": [
@@ -45,7 +46,8 @@ Rules:
 - Extract ALL important fields (name, number, date, address, expiry, etc.)
 - For dates, use YYYY-MM-DD format
 - If a field is not readable, skip it
-- deadlines array should only contain actual expiry/renewal dates
+- confidence: how certain you are that this value is both correctly read and correctly labelled, from 0 to 1. Use 0.9+ only when the text is crisp and the label is unambiguous. Use 0.5-0.8 when the scan is imperfect, the handwriting is unclear, or you inferred which label the value belongs to. Use below 0.5 when you are genuinely unsure. Report your real certainty - a wrong value reported confidently is far worse than an uncertain one flagged honestly.
+- deadlines array should only contain actual expiry/renewal dates printed on the document. If the document shows no expiry or renewal date, return an empty deadlines array - never estimate or infer one.
 - entities: identify people, vehicles, organizations mentioned in the document
 - full_text: extract complete readable text from the document for search
 - Be accurate, never guess values
@@ -97,7 +99,8 @@ Rules:
 - If a field's value is not clearly present in KNOWN INFORMATION, set "found" to false and "value" to null. NEVER guess, infer, or make up a value.
 - For a field you couldn't find, also set "likely_source_type" to the kind of document that would typically contain that information (e.g. "PAN Card", "Aadhaar Card", "Bank Statement", "Passport", "Address Proof"), based on general knowledge - not on the user's actual documents. If you genuinely have no idea what kind of document would hold it, set it to null.
 - Do not skip fields just because they're unanswered - list every field you see on the form.
-- Keep field_label exactly as it appears on the form (or a close paraphrase if handwriting/OCR is unclear).${pdfFieldSection}
+- Keep field_label exactly as it appears on the form (or a close paraphrase if handwriting/OCR is unclear).
+- confidence: how certain you are that this known value is the correct answer for this form field, from 0 to 1. Use 0.9+ when the form's label and the known information clearly refer to the same thing. Use 0.5-0.8 when you matched on meaning rather than wording, or when more than one known value could plausibly fit. Set it to 0 whenever "found" is false. The user reviews low-confidence fields before exporting, so report your real certainty.${pdfFieldSection}
 
 Respond ONLY with valid JSON, no markdown, no backticks, no explanation:
 
@@ -109,6 +112,7 @@ Respond ONLY with valid JSON, no markdown, no backticks, no explanation:
       "value": "the answer, or null if not found",
       "source": "file name it came from, or null if not found",
       "found": true,
+      "confidence": 0.95,
       "pdf_field_name": "exact internal PDF field name if applicable, else null",
       "likely_source_type": "document type that would typically have this, only when found is false, else null"
     }
