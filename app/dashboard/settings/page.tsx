@@ -32,6 +32,9 @@ function SettingsPageInner() {
   const [passwordMessage, setPasswordMessage] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -134,6 +137,35 @@ function SettingsPageInner() {
       setPasswordMessage("Password updated.");
       setNewPassword("");
       setConfirmPassword("");
+    }
+  }
+
+  async function exportData() {
+    setExporting(true);
+    setExportError("");
+
+    try {
+      const res = await fetch("/api/account/export", { method: "POST" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setExportError(data.error || "Export failed");
+        return;
+      }
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `nexus-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setExportError("Export failed. Please try again.");
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -254,19 +286,19 @@ function SettingsPageInner() {
 
       <section className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-serif font-semibold text-[#1A1412]">Agent Permission</h2>
+          <h2 className="text-base font-serif font-semibold text-[#1A1412]">AI permissions</h2>
           {permissionSaved && <span className="text-xs font-semibold text-[#6E885B]">Saved ✓</span>}
         </div>
         <p className="text-xs text-[#7C6E67] mt-1">
-          Controls how much NEXUS prepares on your behalf when you ask it to &ldquo;take care of my renewals.&rdquo;
-          Whatever the level, NEXUS always shows you the plan and waits for your approval before creating anything.
+          How far NEXUS can go on your behalf. Each level unlocks the one above it, and NEXUS always
+          shows you what it plans to do and waits for your approval before acting.
         </p>
         <div className="mt-4 space-y-2">
           {[
-            { value: "read", label: "Read", desc: "NEXUS can only read and organize your documents." },
-            { value: "recommend", label: "Recommend", desc: "NEXUS can also suggest actions and renewal plans." },
-            { value: "prepare", label: "Prepare", desc: "NEXUS drafts a full plan with tasks ready to approve." },
-            { value: "execute", label: "Execute", desc: "Same as Prepare — NEXUS still asks before creating anything real-world actions require your approval either way." },
+            { value: "read", label: "Read", desc: "Read and organize your documents. NEXUS won't suggest or create anything." },
+            { value: "recommend", label: "Recommend", desc: "Also draft renewal plans and suggest what to handle next." },
+            { value: "prepare", label: "Prepare", desc: "Also turn a plan you approve into tasks and reminders inside NEXUS." },
+            { value: "execute", label: "Execute", desc: "Also write to connected services — like adding a renewal to your Google Calendar — once you approve it." },
           ].map((opt) => (
             <label
               key={opt.value}
@@ -290,6 +322,66 @@ function SettingsPageInner() {
             </label>
           ))}
         </div>
+      </section>
+
+      <section className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
+        <h2 className="text-base font-serif font-semibold text-[#1A1412]">What NEXUS can access</h2>
+        <p className="text-xs text-[#7C6E67] mt-1">
+          Everything NEXUS stores about you, and what each part is used for.
+        </p>
+        <ul className="mt-4 space-y-3">
+          {[
+            {
+              what: "Your uploaded files",
+              why: "Stored in private storage only you can read. NEXUS reads a file once, when you upload it.",
+            },
+            {
+              what: "Details extracted from them",
+              why: "Names, numbers, dates and expiry dates found in your documents — used to answer your questions and fill forms.",
+            },
+            {
+              what: "A searchable index of each document",
+              why: "Lets NEXUS find the right document for a question. Derived from your files; deleted with them.",
+            },
+            {
+              what: "Your chat history",
+              why: "So NEXUS remembers the conversation. Clear it any time from Ask NEXUS.",
+            },
+            {
+              what: "Your activity log",
+              why: "A record of everything NEXUS did and everything you approved, so nothing happens invisibly.",
+            },
+          ].map((item) => (
+            <li key={item.what} className="flex gap-3">
+              <span className="text-[#6E885B] text-sm mt-0.5 shrink-0">✓</span>
+              <div>
+                <p className="text-sm font-semibold text-[#2E2724]">{item.what}</p>
+                <p className="text-xs text-[#7C6E67] mt-0.5">{item.why}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-[#7C6E67]/80 mt-4 pt-4 border-t border-[#E5DFD7]/60">
+          NEXUS never shares your documents with anyone. Deleting a document removes its extracted
+          details and search index too.
+        </p>
+      </section>
+
+      <section className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
+        <h2 className="text-base font-serif font-semibold text-[#1A1412]">Your data</h2>
+        <p className="text-xs text-[#7C6E67] mt-1">
+          Download everything NEXUS has extracted and recorded — your documents&apos; details,
+          reminders, tasks, chat history and activity log — as a single JSON file.
+        </p>
+        {exportError && <p className="mt-3 text-sm text-red-600 font-medium">{exportError}</p>}
+        <button
+          onClick={exportData}
+          disabled={exporting}
+          className="mt-3 text-sm px-4 py-2 border border-[#E5DFD7] rounded-xl text-[#2E2724]
+            hover:bg-[#FAF8F5] transition-colors bg-white font-semibold cursor-pointer disabled:opacity-50"
+        >
+          {exporting ? "Preparing your data..." : "Export my data"}
+        </button>
       </section>
 
       <section className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
