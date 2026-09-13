@@ -164,3 +164,9 @@ html {
 .float-a { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both, float-y 6s ease-in-out 0.6s infinite; }
 .float-b { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both, float-y 7s ease-in-out 1s infinite; }
 .float-c { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both, float-y 6.5s ease-in-out 1.4s infinite; }
+
+/* Phones: no auto-zoom on focus, softer radii */
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px; }
+  .card { border-radius: 1rem; }
+}

@@ -78,7 +78,7 @@ export function WeekView(p: Props) {
         </div>
       </div>
 
-      <div className="px-5 pb-4 grid grid-cols-7 gap-1.5">
+      <div className="px-3 sm:px-5 pb-4 grid grid-cols-7 gap-1 sm:gap-1.5">
         {days.map((d, i) => {
           const k = dayKey(d);
           const f = forecastByDay.get(k);
@@ -89,7 +89,7 @@ export function WeekView(p: Props) {
           return (
             <div
               key={k}
-              className={`rounded-2xl border px-1.5 py-2.5 text-center transition-colors ${
+              className={`rounded-xl sm:rounded-2xl border px-0.5 sm:px-1.5 py-2 sm:py-2.5 text-center transition-colors ${
                 isToday ? "border-[#93C5FD] bg-[#EAF2FF]/60" : dls.length ? "border-[#FDE68A] bg-[#FFFBEB]/60" : "border-[#E6E8EE] bg-white"
               }`}
               title={[

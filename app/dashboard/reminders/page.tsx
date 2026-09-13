@@ -242,7 +242,7 @@ export default function RemindersPage() {
             const days = daysLeft(r.expiry_date);
             const isDone = r.status === "completed";
             return (
-              <div key={r.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-[#F6F7F9] transition-colors">
+              <div key={r.id} className="flex items-center justify-between gap-3 flex-wrap px-4 py-3.5 hover:bg-[#F6F7F9] transition-colors">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={`w-2 h-2 rounded-full shrink-0 ${isDone ? "bg-[#15803D]" : "bg-[#E6E8EE]"}`} />
                   <div className="min-w-0">

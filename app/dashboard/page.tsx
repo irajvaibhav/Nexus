@@ -279,7 +279,7 @@ export default function DashboardPage() {
   return (
     <div className="animate-fade-in-up">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748B]">{today}</p>
-      <h1 className="text-4xl font-bold text-[#0F172A] mt-2">
+      <h1 className="text-3xl sm:text-4xl font-bold text-[#0F172A] mt-2">
         {greeting()}, {name || "there"}.
       </h1>
 

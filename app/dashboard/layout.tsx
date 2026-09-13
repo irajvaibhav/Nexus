@@ -84,8 +84,8 @@ export default function DashboardLayout({
   const onAskPage = pathname === "/dashboard/ask" || pathname === "/dashboard";
 
   return (
-    <div className="h-screen overflow-clip flex canvas">
-      <aside className="w-[96px] flex flex-col items-center fixed inset-y-0 left-0 rail z-20 py-4">
+    <div className="h-[100dvh] overflow-clip flex canvas">
+      <aside className="hidden lg:flex w-[96px] flex-col items-center fixed inset-y-0 left-0 rail z-20 py-4">
         <Link href="/dashboard" title="NEXUS" className="hover:scale-105 transition-transform">
           <NexusMark size={48} />
         </Link>
@@ -144,8 +144,8 @@ export default function DashboardLayout({
 
           {menuOpen && (
             <>
-              <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-              <div role="menu" className="absolute left-[88px] bottom-2 z-40 w-64 card p-2 shadow-2xl animate-fade-in-up">
+              <div className="hidden lg:block fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+              <div role="menu" className="hidden lg:block absolute left-[88px] bottom-2 z-40 w-64 card p-2 shadow-2xl animate-fade-in-up">
                 <Link href="/dashboard/profile" onClick={() => setMenuOpen(false)} className="px-3 py-2.5 flex items-center gap-3 rounded-xl hover:bg-[#F1F5F9]">
                   <span className="w-9 h-9 rounded-full bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white text-sm font-bold flex items-center justify-center">
                     {name.charAt(0).toUpperCase()}
@@ -176,27 +176,41 @@ export default function DashboardLayout({
 
       {/* The content column scrolls on its own; the Ask bar is a footer outside
           it, so it stays reachable without ever covering the page. */}
-      <main className="flex-1 ml-[96px] h-screen flex flex-col relative overflow-clip">
+      <main className="flex-1 ml-0 lg:ml-[96px] h-[100dvh] flex flex-col relative overflow-clip">
+        {/* Phone top bar */}
+        <div className="lg:hidden relative shrink-0 flex items-center justify-between px-4 h-14 rail">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <NexusMark size={32} />
+            <span className="text-sm font-bold text-[#0F172A]">NEXUS</span>
+          </Link>
+          <button
+            onClick={() => setMenuOpen((v) => !v)}
+            className="w-9 h-9 rounded-full bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white text-sm font-bold flex items-center justify-center"
+            aria-label="Account"
+          >
+            {name.charAt(0).toUpperCase() || "·"}
+          </button>
+        </div>
         <div aria-hidden className="blob blob-a blob-faint" />
         <div aria-hidden className="blob blob-b blob-faint" />
         <div aria-hidden className="blob blob-c blob-faint" />
         <div ref={scrollRef} className={`relative flex-1 min-h-0 ${pathname === "/dashboard/ask" ? "overflow-clip" : "overflow-y-auto"}`}>
-          <div className={`px-8 pt-8 max-w-6xl mx-auto ${pathname === "/dashboard/ask" ? "h-full pb-4" : "pb-10"}`}>
+          <div className={`px-4 pt-5 sm:px-8 sm:pt-8 max-w-6xl mx-auto ${pathname === "/dashboard/ask" ? "h-full pb-2" : "pb-8"}`}>
             {children}
           </div>
         </div>
 
         {!onAskPage && (
-          <div className="relative shrink-0 px-8 pb-5 pt-2 pointer-events-none">
+          <div className="relative shrink-0 px-3 sm:px-8 pb-2 sm:pb-5 pt-2 pointer-events-none">
             <form
               onSubmit={(e) => { e.preventDefault(); submitAsk(); }}
-              className="pointer-events-auto max-w-3xl mx-auto flex items-center gap-2 card !rounded-full pl-5 pr-2 py-1.5 shadow-xl shadow-[#0F172A]/10 focus-within:border-[#2563EB]/40 transition-colors"
+              className="pointer-events-auto max-w-3xl mx-auto flex items-center gap-2 card !rounded-full pl-4 sm:pl-5 pr-1.5 sm:pr-2 py-1 sm:py-1.5 shadow-xl shadow-[#0F172A]/10 focus-within:border-[#2563EB]/40 transition-colors"
             >
               <SparkleIcon className="w-5 h-5 text-[#2563EB] shrink-0" />
               <input
                 value={ask}
                 onChange={(e) => setAsk(e.target.value)}
-                placeholder="Ask NEXUS anything, e.g. 'when does my insurance expire?'"
+                placeholder="Ask NEXUS anything…"
                 className="flex-1 py-1.5 bg-transparent text-[15px] focus:outline-none text-[#1E293B] placeholder-[#94A3B8]"
               />
               <Link
@@ -214,6 +228,60 @@ export default function DashboardLayout({
                 <ArrowUpIcon className="w-5 h-5" />
               </button>
             </form>
+          </div>
+        )}
+        {/* Phone bottom tabs */}
+        <nav className="lg:hidden relative shrink-0 rail border-t border-[#E6E8EE] grid grid-cols-5 px-1 pb-[env(safe-area-inset-bottom)]">
+          {[
+            navItems[0], navItems[1], navItems[2], navItems[4],
+            { href: "#more", icon: SlidersIcon, label: "More", short: "More" },
+          ].map((item) => {
+            const isMore = item.href === "#more";
+            const isActive = !isMore && (item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href));
+            const Icon = item.icon;
+            const cls = `flex flex-col items-center gap-0.5 py-2 text-[10px] font-semibold ${isActive ? "text-[#2563EB]" : "text-[#64748B]"}`;
+            return isMore ? (
+              <button key="more" onClick={() => setMenuOpen((v) => !v)} className={cls}>
+                <Icon className="w-6 h-6" />
+                {item.short}
+              </button>
+            ) : (
+              <Link key={item.href} href={item.href} className={cls}>
+                <Icon className="w-6 h-6" />
+                {item.short}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {menuOpen && (
+          <div className="lg:hidden fixed inset-0 z-40" onClick={() => setMenuOpen(false)}>
+            <div className="absolute inset-0 bg-[#0F172A]/30" />
+            <div className="absolute inset-x-3 bottom-3 card p-2 animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
+              <Link href="/dashboard/profile" onClick={() => setMenuOpen(false)} className="px-3 py-2.5 flex items-center gap-3 rounded-xl hover:bg-[#F1F5F9]">
+                <span className="w-9 h-9 rounded-full bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white text-sm font-bold flex items-center justify-center">{name.charAt(0).toUpperCase()}</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#0F172A] truncate">{name}</p>
+                  <p className="text-xs text-[#64748B] truncate">{email}</p>
+                </div>
+              </Link>
+              <div className="h-px bg-[#E6E8EE] my-1" />
+              <div className="grid grid-cols-2 gap-1">
+                {[
+                  { href: "/dashboard/scan", label: "Scan & Fill", icon: ScanIcon },
+                  { href: "/dashboard/tasks", label: "Tasks", icon: CheckSquareIcon },
+                  { href: "/dashboard/activity", label: "Activity", icon: ActivityIcon },
+                  { href: "/dashboard/settings", label: "Settings", icon: SlidersIcon },
+                ].map((m) => (
+                  <Link key={m.href} href={m.href} onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-[#1E293B] hover:bg-[#F1F5F9]">
+                    <m.icon className="w-4 h-4 text-[#64748B]" /> {m.label}
+                  </Link>
+                ))}
+              </div>
+              <button onClick={handleLogout} className="w-full mt-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-[#DB2777] hover:bg-[#FDF2F8]">
+                <LogoutIcon className="w-4 h-4" /> Sign out
+              </button>
+            </div>
           </div>
         )}
       </main>

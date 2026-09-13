@@ -449,15 +449,15 @@ function DocumentsPageInner() {
             {docs.length > 0 && needsAttention === 0 && " · All in order"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] text-sm">⌕</span>
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search"
-              className="w-48 focus:w-72 transition-all pl-8 pr-3 py-2.5 bg-white border border-[#E6E8EE] rounded-full text-sm
+              className="w-full sm:w-48 sm:focus:w-72 transition-all pl-8 pr-3 py-2.5 bg-white border border-[#E6E8EE] rounded-full text-sm
                 focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent text-[#1E293B] placeholder-[#94A3B8]"
             />
           </div>
@@ -503,7 +503,7 @@ function DocumentsPageInner() {
       )}
 
 
-      <div className="mt-5 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 stagger">
+      <div className="mt-5 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3 stagger">
         {categories.map((cat) => {
           const count = docs.filter((d) => d.doc_category === cat.name).length;
           const active = activeCategory === cat.name;
@@ -592,7 +592,7 @@ function DocumentsPageInner() {
       )}
 
       <div className="mt-5 card overflow-hidden">
-        <div className="grid grid-cols-[1fr_140px_110px_130px_40px] gap-3 px-5 py-3 border-b border-[#E6E8EE]
+        <div className="grid grid-cols-[1fr_auto_32px] md:grid-cols-[1fr_140px_110px_130px_40px] gap-3 px-4 md:px-5 py-3 border-b border-[#E6E8EE]
           text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
           <span>Document</span>
           <span className="hidden md:block">Category</span>
@@ -628,7 +628,7 @@ function DocumentsPageInner() {
               const health = healthFor(doc);
               const inFlight = jobs.some((j) => j.documentId === doc.id && j.stage !== "ready" && j.stage !== "failed");
               return (
-                <div key={doc.id} className="grid grid-cols-[1fr_140px_110px_130px_40px] gap-3 items-center px-5 py-3.5
+                <div key={doc.id} className="grid grid-cols-[1fr_auto_32px] md:grid-cols-[1fr_140px_110px_130px_40px] gap-3 items-center px-4 md:px-5 py-3.5
                   hover:bg-[#F8FAFC] transition-colors">
                   <Link href={`/dashboard/documents/${doc.id}`} className="flex items-center gap-3 min-w-0">
                     <DocIcon docType={doc.doc_type} fileName={doc.file_name} />
