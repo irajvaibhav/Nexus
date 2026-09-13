@@ -10,7 +10,7 @@ export default async function Landing() {
   if (user) redirect("/dashboard");
 
   return (
-    <div className="relative min-h-screen bg-[#F6F7F9] overflow-x-hidden">
+    <div className="relative min-h-screen bg-[#F6F7F9] overflow-hidden">
       <div aria-hidden className="blob blob-a" />
       <div aria-hidden className="blob blob-b" />
 
