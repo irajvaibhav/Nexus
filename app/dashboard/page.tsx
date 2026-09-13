@@ -7,7 +7,7 @@ import { daysLeft, daysLabel } from "@/lib/dates";
 import { docHealth, LOW_CONFIDENCE_THRESHOLD } from "@/lib/doc-status";
 import { detectConflicts, type ConflictGroup } from "@/lib/conflicts";
 import { geocodeCity, getDailyForecast, bestUpcomingDay, weatherEmoji, type DailyForecast } from "@/lib/weather";
-import { DocumentsIcon, ChatIcon, ScanIcon, CheckSquareIcon, SparkleIcon, ArrowUpIcon, BellIcon } from "@/components/icons";
+import { DocumentsIcon, ChatIcon, ScanIcon, CheckSquareIcon, SparkleIcon, BellIcon } from "@/components/icons";
 import { DocIcon } from "@/components/doc-icon";
 import { useCallback, useEffect, useState } from "react";
 
@@ -65,7 +65,6 @@ export default function DashboardPage() {
   const [addedLink, setAddedLink] = useState<string | null>(null);
   const [addedToCalendar, setAddedToCalendar] = useState(false);
   const [calendarError, setCalendarError] = useState("");
-  const [askInput, setAskInput] = useState("");
 
   const docFileNames = new Map(docs.map((d) => [d.id, d.file_name]));
 
@@ -251,66 +250,24 @@ export default function DashboardPage() {
 
   return (
     <div className="animate-fade-in-up">
-      <section className="hero relative overflow-hidden rounded-[28px] text-white px-8 py-8 shadow-2xl shadow-[#0F172A]/25">
-        <div className="relative flex items-start justify-between gap-6 flex-wrap">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">{today}</p>
-            <h1 className="text-[40px] leading-[1.05] font-bold mt-2">
-              {greeting()}, {name || "there"}.
-            </h1>
-            <p className="mt-3 text-[15px] text-white/70 max-w-lg">
-              {attention.length === 0
-                ? docs.length === 0
-                  ? "Add your first document and NEXUS starts keeping track."
-                  : "Nothing pending. Everything is in order."
-                : attention.length === 1
-                ? "One thing needs your attention today."
-                : `${attention.length} things need your attention today.`}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Stat label="Documents" value={docs.length} />
-            <Stat label="Coming up" value={deadlines.length} />
-            <Stat label="Open tasks" value={openTasksCount} />
-          </div>
-        </div>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748B]">{today}</p>
+      <h1 className="text-4xl font-bold text-[#0F172A] mt-2">
+        {greeting()}, {name || "there"}.
+      </h1>
 
-        <form
-          onSubmit={(e) => { e.preventDefault(); goAsk(askInput.trim() || "What needs my attention?"); }}
-          className="relative mt-7 flex items-center gap-2 rounded-2xl bg-white/10 border border-white/15 backdrop-blur px-4 py-2
-            focus-within:bg-white/15 focus-within:border-white/30 transition-colors"
-        >
-          <SparkleIcon className="w-5 h-5 text-[#93C5FD] shrink-0" />
-          <input
-            value={askInput}
-            onChange={(e) => setAskInput(e.target.value)}
-            placeholder="Ask NEXUS anything about your documents…"
-            className="flex-1 py-2 bg-transparent text-[15px] text-white placeholder-white/50 focus:outline-none"
-          />
-          <button type="submit" className="w-10 h-10 rounded-xl bg-white text-[#0F172A] flex items-center justify-center hover:bg-[#EAF2FF] transition-colors" aria-label="Ask">
-            <ArrowUpIcon className="w-5 h-5" />
-          </button>
-        </form>
-        <div className="relative mt-3 flex flex-wrap gap-1.5">
-          {["When does my insurance expire?", "What's my PAN number?", "What do I need for a car loan?"].map((q) => (
-            <button key={q} onClick={() => goAsk(q)} className="text-xs px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-white/80 hover:bg-white/20 transition-colors">
-              {q}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {attention.length > 0 && <p className="text-sm font-semibold text-[#0F172A] mt-8 mb-3">What needs your attention</p>}
+      <p className="text-sm font-semibold text-[#0F172A] mt-7 mb-3">What needs your attention</p>
       {attention.length === 0 ? (
-        docs.length === 0 ? (
-          <div className="card mt-8 px-5 py-4 flex items-center gap-3">
-            <span className="w-9 h-9 rounded-full bg-gradient-to-br from-[#DBEAFE] to-[#BFDBFE] text-[#1D4ED8] flex items-center justify-center font-bold">+</span>
-            <p className="text-sm text-[#1E293B]">Add your first document to get started.</p>
+        <div className="card px-5 py-4 flex items-center gap-3">
+          <span className="w-9 h-9 rounded-full bg-gradient-to-br from-[#DCFCE7] to-[#BBF7D0] text-[#15803D] flex items-center justify-center font-bold">✓</span>
+          <p className="text-sm text-[#1E293B]">
+            {docs.length === 0 ? "Nothing yet. Add your first document to get started." : "Nothing pending. Everything is in order."}
+          </p>
+          {docs.length === 0 && (
             <Link href="/dashboard/documents" className="ml-auto px-4 py-2 rounded-full bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white text-sm font-semibold shadow-md shadow-[#2563EB]/30">
               Add document
             </Link>
-          </div>
-        ) : null
+          )}
+        </div>
       ) : (
         <div className={`grid grid-cols-1 gap-3 ${attention.length > 1 ? "md:grid-cols-2" : ""}`}>
           {attention.map((a, i) => (
@@ -496,15 +453,6 @@ function Tile({ href, label, hint, tone, icon }: { href: string; label: string; 
       <span className="text-sm font-bold text-[#0F172A]">{label}</span>
       <span className="text-[11px] text-[#64748B] -mt-1.5">{hint}</span>
     </Link>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="min-w-[92px] rounded-2xl bg-white/10 border border-white/10 px-4 py-3 text-center backdrop-blur">
-      <p className="text-2xl font-bold leading-none">{value}</p>
-      <p className="text-[11px] text-white/60 mt-1.5">{label}</p>
-    </div>
   );
 }
 

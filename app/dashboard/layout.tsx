@@ -62,8 +62,7 @@ export default function DashboardLayout({
     router.push(q ? `/dashboard/ask?q=${encodeURIComponent(q)}` : "/dashboard/ask");
   }
 
-  // Home carries its own Ask box in the hero; the chat page has its composer.
-  const onAskPage = pathname === "/dashboard/ask" || pathname === "/dashboard";
+  const onAskPage = pathname === "/dashboard/ask";
 
   return (
     <div className="min-h-screen flex bg-[#F6F7F9]">
