@@ -195,8 +195,8 @@ export default function RemindersPage() {
         <button
           onClick={buildPlan}
           disabled={planLoading}
-          className="text-sm px-4 py-2.5 bg-[#2563EB] text-white rounded-xl font-medium
-            hover:bg-[#1D4ED8] disabled:opacity-50 transition-colors shadow-sm shrink-0"
+          className="text-sm px-5 py-2.5 bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white rounded-full font-semibold
+            shadow-md shadow-[#2563EB]/30 hover:shadow-lg disabled:opacity-50 transition-shadow shrink-0"
         >
           {planLoading ? "Reviewing your renewals..." : "Take care of my renewals"}
         </button>
@@ -226,78 +226,87 @@ export default function RemindersPage() {
         <TabButton label="All" active={tab === "all"} onClick={() => setTab("all")} />
       </div>
 
-      <div className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] divide-y divide-[#E6E8EE]/50">
+      <div className="mt-4 space-y-3">
         {loading ? (
-          <p className="px-4 py-8 text-sm text-[#64748B]/60 text-center">Loading reminders...</p>
+          [0, 1].map((i) => <div key={i} className="skeleton h-24 rounded-2xl" />)
         ) : visible.length === 0 ? (
-          <p className="px-4 py-8 text-sm text-[#64748B]/60 text-center">
-            {tab === "active"
-              ? "No active reminders. NEXUS will surface expiry dates it finds in your documents here."
-              : tab === "completed"
-              ? "Nothing marked done yet."
-              : "No reminders yet."}
-          </p>
+          <div className="card px-6 py-12 text-center">
+            <span className="mx-auto w-12 h-12 rounded-2xl bg-[#FFF7ED] text-[#EA580C] flex items-center justify-center text-xl">🔔</span>
+            <p className="mt-3 text-sm font-semibold text-[#0F172A]">
+              {tab === "active" ? "No active reminders" : tab === "completed" ? "Nothing marked done yet" : "No reminders yet"}
+            </p>
+            <p className="mt-1 text-xs text-[#64748B]">Expiry dates NEXUS finds in your documents appear here.</p>
+          </div>
         ) : (
           visible.map((r) => {
             const days = daysLeft(r.expiry_date);
             const isDone = r.status === "completed";
+            const date = new Date(r.expiry_date);
+            const tile = isDone
+              ? "bg-[#F1F5F9] text-[#94A3B8]"
+              : days < 0
+              ? "bg-[#FDF2F8] text-[#DB2777]"
+              : days <= 14
+              ? "bg-[#FFFBEB] text-[#D97706]"
+              : "bg-[#EAF2FF] text-[#2563EB]";
+            const cal = calState[r.id];
             return (
-              <div key={r.id} className="flex items-center justify-between gap-3 flex-wrap px-4 py-3.5 hover:bg-[#F6F7F9] transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${isDone ? "bg-[#15803D]" : "bg-[#E6E8EE]"}`} />
-                  <div className="min-w-0">
-                    <p className={`text-sm font-semibold truncate ${isDone ? "text-[#64748B]/50 line-through" : "text-[#1E293B]"}`}>
-                      {r.title}
-                    </p>
-                    <p className="text-xs text-[#64748B] truncate">
-                      {r.documents?.file_name && <>{r.documents.file_name} · </>}
-                      Expires on {new Date(r.expiry_date).toLocaleDateString()}
-                    </p>
-                  </div>
+              <div key={r.id} className={`card card-hover px-5 py-4 flex items-center gap-4 ${isDone ? "opacity-70" : ""}`}>
+                <div className={`w-14 rounded-xl py-2 text-center shrink-0 ${tile}`}>
+                  <p className="text-xl font-bold leading-none">{date.getDate()}</p>
+                  <p className="text-[10px] font-semibold uppercase mt-0.5">{date.toLocaleDateString(undefined, { month: "short" })}</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {!isDone && (
-                    <span className={`text-[11px] px-2 py-1 rounded-full font-medium ${badgeColorFor(days)}`}>
-                      {daysLabel(days)}
-                    </span>
-                  )}
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className={`text-[15px] font-semibold truncate ${isDone ? "text-[#64748B] line-through" : "text-[#0F172A]"}`}>{r.title}</p>
+                    {!isDone && (
+                      <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${badgeColorFor(days)}`}>{daysLabel(days)}</span>
+                    )}
+                    {cal?.phase === "added" && (
+                      cal.link
+                        ? <a href={cal.link} target="_blank" rel="noreferrer" className="text-[11px] px-2 py-0.5 rounded-full bg-[#F0FDF4] text-[#15803D] font-semibold">On calendar ✓</a>
+                        : <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#F0FDF4] text-[#15803D] font-semibold">On calendar ✓</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#64748B] truncate mt-0.5">
+                    {r.documents?.file_name || "Your documents"} · {date.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
+                  </p>
+                  {cal?.phase === "failed" && <p className="text-[11px] text-[#DB2777] mt-1">{cal.message}</p>}
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => router.push(`/dashboard/ask?q=${encodeURIComponent(`What do I need to know about my ${r.title}?`)}`)}
-                    className="text-xs text-[#2563EB] hover:underline px-1 font-semibold"
+                    title="Ask NEXUS about this"
+                    className="h-9 px-3 rounded-full text-xs font-semibold text-[#2563EB] hover:bg-[#EAF2FF] transition-colors"
                   >
                     Ask
                   </button>
-                  {!isDone && calendarConnected && (
-                    calState[r.id]?.phase === "added" ? (
-                      calState[r.id]?.link
-                        ? <a href={calState[r.id]!.link!} target="_blank" rel="noreferrer" className="text-xs px-2.5 py-1 rounded-xl bg-[#F0FDF4] text-[#15803D] font-semibold">On calendar ✓</a>
-                        : <span className="text-xs px-2.5 py-1 rounded-xl bg-[#F0FDF4] text-[#15803D] font-semibold">On calendar ✓</span>
-                    ) : (
-                      <button
-                        onClick={() => addReminderToCalendar(r)}
-                        disabled={calState[r.id]?.phase === "adding"}
-                        title={calState[r.id]?.message || "Add to Google Calendar with reminders"}
-                        className={`text-xs px-2.5 py-1 rounded-xl border transition-colors bg-white disabled:opacity-50 ${
-                          calState[r.id]?.phase === "failed" ? "border-[#FBCFE8] text-[#DB2777]" : "border-[#E6E8EE] text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB]"
-                        }`}
-                      >
-                        {calState[r.id]?.phase === "adding" ? "Adding…" : calState[r.id]?.phase === "failed" ? "Retry calendar" : "Remind me"}
-                      </button>
-                    )
+                  {!isDone && calendarConnected && cal?.phase !== "added" && (
+                    <button
+                      onClick={() => addReminderToCalendar(r)}
+                      disabled={cal?.phase === "adding"}
+                      title="Add to Google Calendar with reminders"
+                      className="h-9 px-3 rounded-full text-xs font-semibold border border-[#E6E8EE] bg-white text-[#1E293B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors disabled:opacity-50"
+                    >
+                      {cal?.phase === "adding" ? "Adding…" : cal?.phase === "failed" ? "Retry" : "Remind me"}
+                    </button>
                   )}
                   {isDone ? (
                     <button
                       onClick={() => setStatus(r.id, "active")}
-                      className="text-xs px-2.5 py-1 rounded-xl border border-[#E6E8EE] text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors bg-white"
+                      className="h-9 px-3 rounded-full text-xs font-semibold border border-[#E6E8EE] bg-white text-[#1E293B] hover:border-[#2563EB] transition-colors"
                     >
                       Reopen
                     </button>
                   ) : (
                     <button
                       onClick={() => setStatus(r.id, "completed")}
-                      className="text-xs px-2.5 py-1 rounded-xl bg-[#15803D] text-white hover:bg-[#166534] transition-colors shadow-sm"
+                      title="Mark done"
+                      className="h-9 w-9 rounded-full border border-[#E6E8EE] bg-white text-[#15803D] hover:bg-[#F0FDF4] hover:border-[#BBF7D0] transition-colors flex items-center justify-center font-bold"
                     >
-                      Mark done
+                      ✓
                     </button>
                   )}
                 </div>
