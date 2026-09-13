@@ -275,13 +275,15 @@ function SettingsPageInner() {
     router.refresh();
   }
   return (
-    <div className="max-w-2xl animate-fade-in-up">
+    <div className="animate-fade-in-up">
       <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Settings</h1>
       <p className="text-sm text-[#64748B] mt-1">
         Profile, permissions, integrations and data.
       </p>
 
-      <section className="mt-6 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+
+      <section className="bg-white rounded-2xl border border-[#E6E8EE] p-6">
         <h2 className="text-base font-semibold text-[#0F172A]">Profile</h2>
         <form onSubmit={saveName} className="mt-4 space-y-4">
           <div>
@@ -336,7 +338,7 @@ function SettingsPageInner() {
         </form>
       </section>
 
-      <section className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+      <section className="bg-white rounded-2xl border border-[#E6E8EE] p-6">
         <h2 className="text-base font-semibold text-[#0F172A]">Security</h2>
         <form onSubmit={savePassword} className="mt-4 space-y-4">
           <div>
@@ -373,7 +375,7 @@ function SettingsPageInner() {
         </form>
       </section>
 
-      <section className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+      <section className="bg-white rounded-2xl border border-[#E6E8EE] p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-[#0F172A]">AI permissions</h2>
           {permissionSaved && <span className="text-xs font-semibold text-[#15803D]">Saved ✓</span>}
@@ -413,7 +415,7 @@ function SettingsPageInner() {
         </div>
       </section>
 
-      <section className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+      <section className="bg-white rounded-2xl border border-[#E6E8EE] p-6">
         <h2 className="text-base font-semibold text-[#0F172A]">What NEXUS can access</h2>
         <p className="text-xs text-[#64748B] mt-1">
           Everything NEXUS stores about you, and what each part is used for.
@@ -456,7 +458,7 @@ function SettingsPageInner() {
         </p>
       </section>
 
-      <section className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+      <section className="bg-white rounded-2xl border border-[#E6E8EE] p-6">
         <h2 className="text-base font-semibold text-[#0F172A]">Your data</h2>
         <p className="text-xs text-[#64748B] mt-1">
           Download everything NEXUS holds about you as one JSON file.
@@ -472,7 +474,7 @@ function SettingsPageInner() {
         </button>
       </section>
 
-      <section className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+      <section className="bg-white rounded-2xl border border-[#E6E8EE] p-6">
         <h2 className="text-base font-semibold text-[#0F172A]">Google Calendar</h2>
         <p className="text-xs text-[#64748B] mt-1">
           Connect your calendar so NEXUS can check you&apos;re free before suggesting a day, and add
@@ -597,7 +599,7 @@ function SettingsPageInner() {
         )}
       </section>
 
-      <section className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+      <section className="bg-white rounded-2xl border border-[#E6E8EE] p-6">
         <h2 className="text-base font-semibold text-[#0F172A]">Session</h2>
         <p className="text-xs text-[#64748B] mt-1">Sign out of NEXUS on this device.</p>
         <button
@@ -609,7 +611,7 @@ function SettingsPageInner() {
         </button>
       </section>
 
-      <section className="mt-4 bg-[#EAF2FF]/30 rounded-2xl border border-[#CFE0FF] p-6">
+      <section className="lg:col-span-2 bg-[#EAF2FF]/30 rounded-2xl border border-[#CFE0FF] p-6">
         <h2 className="text-base font-semibold text-[#2563EB]">Danger zone</h2>
         <p className="text-xs text-[#64748B] mt-1">
           Permanently delete your account and everything in it: documents, extracted data,
@@ -656,6 +658,7 @@ function SettingsPageInner() {
           </div>
         )}
       </section>
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase-browser";
 import { daysLeft, daysLabel, badgeColorFor } from "@/lib/dates";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { TwoCol, RemindersAside } from "@/components/page-asides";
 
 type Reminder = {
   id: string;
@@ -182,7 +183,8 @@ export default function RemindersPage() {
   const completedCount = reminders.filter((r) => r.status === "completed").length;
 
   return (
-    <div className="max-w-3xl animate-fade-in-up">
+    <TwoCol aside={<RemindersAside />}>
+    <div>
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Reminders</h1>
@@ -377,6 +379,7 @@ export default function RemindersPage() {
         </div>
       )}
     </div>
+    </TwoCol>
   );
 }
 

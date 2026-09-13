@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase-browser";
 import { useCallback, useEffect, useState } from "react";
+import { TwoCol, TasksAside } from "@/components/page-asides";
 
 type Task = {
   id: string;
@@ -28,6 +29,8 @@ export default function TasksPage() {
 
   useEffect(() => {
     load();
+    window.addEventListener("nexus:tasks-changed", load);
+    return () => window.removeEventListener("nexus:tasks-changed", load);
   }, [load]);
 
   async function addTask(e: React.FormEvent) {
@@ -63,7 +66,8 @@ export default function TasksPage() {
   const visible = showDone ? tasks : openTasks;
 
   return (
-    <div className="max-w-2xl animate-fade-in-up">
+    <TwoCol aside={<TasksAside />}>
+    <div>
       <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Tasks</h1>
       <p className="text-sm text-[#64748B] mt-1">
         Renewals, follow-ups, anything on your plate.
@@ -136,5 +140,6 @@ export default function TasksPage() {
         )}
       </div>
     </div>
+    </TwoCol>
   );
 }

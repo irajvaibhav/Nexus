@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase-browser";
 import { useEffect, useState } from "react";
+import { TwoCol, ActivityAside } from "@/components/page-asides";
 
 type Activity = {
   id: string;
@@ -86,7 +87,8 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="max-w-2xl animate-fade-in-up">
+    <TwoCol aside={<ActivityAside />}>
+    <div>
       <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Activity</h1>
       <p className="text-sm text-[#64748B] mt-1">
         Everything NEXUS did and everything you approved.
@@ -155,5 +157,6 @@ export default function ActivityPage() {
         )}
       </div>
     </div>
+    </TwoCol>
   );
 }

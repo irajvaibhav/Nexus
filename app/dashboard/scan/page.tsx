@@ -5,6 +5,7 @@ import { ScanIcon } from "@/components/icons";
 import { isSensitiveField } from "@/lib/sensitive";
 import { processDocument } from "@/lib/upload";
 import { useState } from "react";
+import { TwoCol, ScanAside } from "@/components/page-asides";
 
 const LOW_CONFIDENCE = 0.75;
 
@@ -278,7 +279,8 @@ export default function ScanFillPage() {
     : [];
 
   return (
-    <div className="max-w-2xl animate-fade-in-up">
+    <TwoCol aside={<ScanAside />}>
+    <div>
       <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Scan &amp; Fill</h1>
       <p className="text-sm text-[#64748B] mt-1">
         Upload a blank form. NEXUS fills what it knows, you check the rest.
@@ -601,6 +603,7 @@ export default function ScanFillPage() {
         </div>
       )}
     </div>
+    </TwoCol>
   );
 }
 
