@@ -39,9 +39,8 @@ export default async function Landing() {
           Your documents, remembered. Your deadlines,{" "}
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#2563EB] to-[#4F46E5]">handled.</span>
         </h1>
-        <p className="mt-5 text-[17px] text-[#64748B] leading-relaxed max-w-lg">
-          Upload your IDs, policies and statements once. NEXUS reads every number and date,
-          answers questions from them, warns you before anything expires, and picks a good day to sort it out.
+        <p className="mt-5 text-[17px] text-[#64748B] leading-relaxed max-w-md">
+          Upload once. Ask anything. Never miss a renewal.
         </p>
         <div className="mt-7 flex items-center gap-3 flex-wrap">
           <Link href="/signup" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white font-semibold shadow-lg shadow-[#2563EB]/30 hover:shadow-xl hover:-translate-y-0.5 transition-all">
@@ -51,7 +50,7 @@ export default async function Landing() {
             Sign in
           </Link>
         </div>
-        <p className="mt-6 text-sm text-[#94A3B8]">Private by design · Sensitive values masked · You approve before NEXUS acts</p>
+        <p className="mt-6 text-sm text-[#94A3B8]">Private by design. You approve before NEXUS acts.</p>
       </div>
 
       {/* Stage: NEXUS answering in a loop, with the other features floating around it */}
@@ -101,7 +100,7 @@ export default async function Landing() {
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-[#D97706]">Expiring</p>
                 </div>
                 <p className="mt-2 text-sm font-semibold text-[#0F172A]">Car insurance · 6 days</p>
-                <p className="text-[11px] text-[#64748B] mt-0.5">Saturday is clear and free. Added with reminders.</p>
+                <p className="text-[11px] text-[#64748B] mt-0.5">Saturday is clear and free.</p>
               </div>
               <div className="rounded-2xl border border-[#E6E8EE] sky p-3">
                 <div className="flex items-center justify-between">
@@ -145,17 +144,16 @@ export default async function Landing() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2563EB]">What NEXUS does</p>
               <h2 className="mt-3 text-3xl md:text-4xl font-bold text-[#0F172A]">Four jobs it takes off your plate.</h2>
-              <p className="mt-4 text-[#64748B] leading-relaxed">Each one is useful alone. Together they mean you stop keeping paperwork in your head.</p>
               <Link href="/signup" className="inline-flex items-center gap-2 mt-8 px-6 py-3 rounded-full bg-[#0F172A] text-white font-semibold hover:bg-[#1E293B] transition-colors">
                 Create your vault <span aria-hidden>→</span>
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 stagger">
               {[
-                { icon: <DocumentsIcon className="w-5 h-5" />, tone: "from-[#2563EB] to-[#4F46E5]", title: "Vault", text: "Reads every ID, policy and statement once. Numbers, dates and expiry are extracted with a confidence score, so a guess never looks like a fact." },
-                { icon: <ChatIcon className="w-5 h-5" />, tone: "from-[#0EA5E9] to-[#2563EB]", title: "Ask NEXUS", text: "Type, speak or send a photo. Answers come only from your documents, with the source shown, and say plainly when something is missing." },
-                { icon: <CalendarIcon className="w-5 h-5" />, tone: "from-[#F59E0B] to-[#EA580C]", title: "Week view", text: "Your Google Calendar, your deadlines and the forecast on one strip. NEXUS picks a dry, free day and adds it with reminders." },
-                { icon: <ScanIcon className="w-5 h-5" />, tone: "from-[#F97316] to-[#DB2777]", title: "Scan & Fill", text: "Photograph any form. NEXUS fills what it knows, flags what it isn't sure of, and hands you a completed PDF." },
+                { icon: <DocumentsIcon className="w-5 h-5" />, tone: "from-[#2563EB] to-[#4F46E5]", title: "Vault", text: "Every ID, policy and statement read once and searchable." },
+                { icon: <ChatIcon className="w-5 h-5" />, tone: "from-[#0EA5E9] to-[#2563EB]", title: "Ask NEXUS", text: "Type, speak or send a photo. Answers cite your documents." },
+                { icon: <CalendarIcon className="w-5 h-5" />, tone: "from-[#F59E0B] to-[#EA580C]", title: "Week view", text: "Calendar, deadlines and weather on one strip. NEXUS picks the day." },
+                { icon: <ScanIcon className="w-5 h-5" />, tone: "from-[#F97316] to-[#DB2777]", title: "Scan & Fill", text: "Photograph a form, get it back filled as a PDF." },
               ].map((f) => (
                 <div key={f.title} className="card card-hover p-5">
                   <span className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${f.tone} text-white flex items-center justify-center shadow-md`}>{f.icon}</span>
@@ -176,9 +174,9 @@ export default async function Landing() {
             <h2 className="mt-3 text-3xl font-bold">Your documents stay yours.</h2>
           </div>
           {[
-            { t: "Private storage", d: "Files live in storage only your account can read." },
-            { t: "Masked by default", d: "Aadhaar, PAN and account numbers stay hidden until you tap them." },
-            { t: "You approve first", d: "NEXUS shows what it plans to do and waits. Every action is logged." },
+            { t: "Private storage", d: "Only your account can read your files." },
+            { t: "Masked by default", d: "Aadhaar, PAN and account numbers stay hidden until tapped." },
+            { t: "You approve first", d: "NEXUS waits for your go-ahead. Every action is logged." },
           ].map((x) => (
             <div key={x.t} className="rounded-2xl bg-white/10 border border-white/10 p-5">
               <p className="font-semibold">{x.t}</p>
