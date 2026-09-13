@@ -136,35 +136,48 @@ export function SlidersIcon({ className }: IconProps) {
 
 export function IdCardIcon({ className }: IconProps) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="5" width="18" height="14" rx="2.5" />
-      <circle cx="8.5" cy="11" r="2" />
-      <path d="M5.5 16c.6-1.6 1.7-2.4 3-2.4s2.4.8 3 2.4M14 10h4M14 13.5h4" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2.5" y="4.5" width="19" height="15" rx="3" fill="currentColor" fillOpacity="0.22" />
+      <rect x="2.5" y="4.5" width="19" height="15" rx="3" />
+      <circle cx="8.5" cy="10.5" r="2.2" fill="currentColor" fillOpacity="0.9" stroke="none" />
+      <path d="M5 16c.7-1.7 1.9-2.6 3.5-2.6S11.3 14.3 12 16" />
+      <path d="M14.5 9.5h4.5M14.5 12.5h4.5M14.5 15.5h3" />
     </svg>
   );
 }
 
 export function BankIcon({ className }: IconProps) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9.5 12 4l9 5.5H3ZM5 9.5V17M9.5 9.5V17M14.5 9.5V17M19 9.5V17M3 20h18" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2.5 9.5 12 3.5l9.5 6H2.5Z" fill="currentColor" fillOpacity="0.28" />
+      <path d="M2.5 9.5 12 3.5l9.5 6H2.5Z" />
+      <path d="M5 9.5v8M9.7 9.5v8M14.3 9.5v8M19 9.5v8" />
+      <rect x="3" y="17.5" width="18" height="3" rx="1" fill="currentColor" fillOpacity="0.9" stroke="none" />
+      <circle cx="12" cy="7" r="1" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
 export function CarIcon({ className }: IconProps) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 13 6.6 8.4A2 2 0 0 1 8.5 7h7a2 2 0 0 1 1.9 1.4L19 13M4 13h16v4.5a1 1 0 0 1-1 1h-1.5a1 1 0 0 1-1-1V17h-9v.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V13Z" />
-      <circle cx="7.5" cy="15" r="1" /><circle cx="16.5" cy="15" r="1" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 13.5 5.2 8.3A2 2 0 0 1 7 7h10a2 2 0 0 1 1.8 1.3L21 13.5v4a1 1 0 0 1-1 1h-1.5a1 1 0 0 1-1-1V17h-11v.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4Z" fill="currentColor" fillOpacity="0.25" />
+      <path d="M3 13.5 5.2 8.3A2 2 0 0 1 7 7h10a2 2 0 0 1 1.8 1.3L21 13.5v4a1 1 0 0 1-1 1h-1.5a1 1 0 0 1-1-1V17h-11v.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4Z" />
+      <path d="M3.5 13.5h17" />
+      <circle cx="7" cy="15.3" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="17" cy="15.3" r="1.2" fill="currentColor" stroke="none" />
+      <path d="M8 10.5h8" strokeOpacity="0.7" />
     </svg>
   );
 }
 
 export function FolderIcon({ className }: IconProps) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6a2 2 0 0 1 1.5.7L12 7.5h6.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-10Z" fill="currentColor" fillOpacity="0.25" />
+      <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6a2 2 0 0 1 1.5.7L12 7.5h6.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-10Z" />
+      <path d="M3 11h18" />
+      <path d="M9 15h6" strokeOpacity="0.8" />
     </svg>
   );
 }

@@ -102,7 +102,8 @@ function DocumentsPageInner() {
   const [customCategories, setCustomCategories] = useState<CustomCategoryRow[]>([]);
   const [jobs, setJobs] = useState<UploadJob[]>([]);
   const [dragOver, setDragOver] = useState(false);
-  const [showUpload, setShowUpload] = useState(false);
+  // /dashboard/documents?upload=1 (the Scan tile) opens straight onto the dropzone.
+  const [showUpload, setShowUpload] = useState(searchParams.get("upload") === "1");
   const [loadingList, setLoadingList] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -469,7 +470,40 @@ function DocumentsPageInner() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 stagger">
+      {(showUpload || docs.length === 0 || dragOver) && (
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        className={`mt-6 border-2 border-dashed rounded-2xl p-8 text-center
+          transition-colors ${
+            dragOver
+              ? "border-[#2563EB] bg-[#EAF2FF]"
+              : "border-[#E6E8EE] bg-white hover:border-[#2563EB]/50 hover:bg-[#F8FAFC]"
+          }`}
+      >
+        <div className="text-3xl mb-2">📄</div>
+        <p className="text-sm font-semibold text-[#1E293B]">
+          {uploading ? "Uploading…" : "Drop a document here"}
+        </p>
+        <p className="text-xs text-[#64748B] mt-1">PDF, JPG or PNG, up to 10MB each</p>
+        <label className="inline-block mt-4 px-4 py-2 bg-[#2563EB] text-white
+          rounded-full text-sm font-medium cursor-pointer hover:bg-[#1D4ED8]
+          transition-colors">
+          Browse files
+          <input
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            multiple
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+        </label>
+      </div>
+      )}
+
+
+      <div className="mt-5 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 stagger">
         {categories.map((cat) => {
           const count = docs.filter((d) => d.doc_category === cat.name).length;
           const active = activeCategory === cat.name;
@@ -543,38 +577,6 @@ function DocumentsPageInner() {
             and confirm or correct them.
           </p>
         </div>
-      )}
-
-      {(showUpload || docs.length === 0 || dragOver) && (
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-        className={`mt-5 border-2 border-dashed rounded-2xl p-8 text-center
-          transition-colors ${
-            dragOver
-              ? "border-[#2563EB] bg-[#EAF2FF]"
-              : "border-[#E6E8EE] bg-white hover:border-[#2563EB]/50 hover:bg-[#F8FAFC]"
-          }`}
-      >
-        <div className="text-3xl mb-2">📄</div>
-        <p className="text-sm font-semibold text-[#1E293B]">
-          {uploading ? "Uploading…" : "Drop a document here"}
-        </p>
-        <p className="text-xs text-[#64748B] mt-1">PDF, JPG or PNG, up to 10MB each</p>
-        <label className="inline-block mt-4 px-4 py-2 bg-[#2563EB] text-white
-          rounded-full text-sm font-medium cursor-pointer hover:bg-[#1D4ED8]
-          transition-colors">
-          Browse files
-          <input
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png"
-            multiple
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-        </label>
-      </div>
       )}
 
       {error && (

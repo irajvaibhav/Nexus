@@ -391,7 +391,7 @@ export default function DashboardPage() {
           </section>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger">
-            <Tile href="/dashboard/documents" label="Scan" hint="Add a document" tone="from-[#2563EB] to-[#4F46E5]" icon={<DocumentsIcon className="w-5 h-5" />} />
+            <Tile href="/dashboard/documents?upload=1" label="Scan" hint="Add a document" tone="from-[#2563EB] to-[#4F46E5]" icon={<DocumentsIcon className="w-5 h-5" />} />
             <Tile href="/dashboard/ask" label="Ask" hint="Get an answer" tone="from-[#0EA5E9] to-[#2563EB]" icon={<ChatIcon className="w-5 h-5" />} />
             <Tile href="/dashboard/tasks" label="Add" hint="New task" tone="from-[#16A34A] to-[#0D9488]" icon={<CheckSquareIcon className="w-5 h-5" />} />
             <Tile href="/dashboard/scan" label="Fill" hint="Complete a form" tone="from-[#F97316] to-[#DB2777]" icon={<ScanIcon className="w-5 h-5" />} />
