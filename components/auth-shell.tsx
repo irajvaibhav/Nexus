@@ -91,7 +91,7 @@ export function AuthShell({ mode, openEmail, children }: { mode: Mode; openEmail
 // depth without competing with the form.
 function Backdrop() {
   return (
-    <div aria-hidden="true" className="absolute inset-0 pointer-events-none select-none blur-[6px] opacity-70">
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none select-none opacity-60">
       <div className="absolute inset-0 bg-gradient-to-br from-[#EFF6FF] via-[#F6F7F9] to-[#F1F5F9]" />
       <div className="absolute left-0 top-0 bottom-0 w-[76px] bg-white border-r border-[#E6E8EE]" />
       <div className="absolute left-[120px] top-[80px] right-[120px]">

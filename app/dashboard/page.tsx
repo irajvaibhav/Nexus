@@ -285,7 +285,7 @@ export default function DashboardPage() {
 
       {/* Ask NEXUS first: it's the core of the product, so it sits right under the greeting. */}
       <section className="mt-6 relative">
-        <div className="absolute -inset-px rounded-[22px] bg-gradient-to-r from-[#2563EB]/40 via-[#4F46E5]/30 to-[#0EA5E9]/40 blur-sm opacity-70 pointer-events-none" />
+        <div className="absolute -inset-px rounded-[22px] bg-gradient-to-r from-[#2563EB]/40 via-[#4F46E5]/30 to-[#0EA5E9]/40 opacity-60 pointer-events-none" />
         <form onSubmit={submitAsk} className="relative card p-2 pl-4 flex items-center gap-2 shadow-xl shadow-[#2563EB]/10">
           <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center shrink-0 shadow-md shadow-[#2563EB]/30">
             <SparkleIcon className="w-5 h-5" />
