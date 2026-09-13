@@ -27,13 +27,6 @@ type DocRow = {
   uploaded_at: string;
 };
 
-type ActivityRow = {
-  id: string;
-  action: string;
-  details: { message?: string } | null;
-  created_at: string;
-};
-
 type Attention = {
   key: string;
   icon: string;
@@ -43,16 +36,6 @@ type Attention = {
   tone: "blue" | "amber" | "rose";
   onAction: () => void;
 };
-
-function timeAgo(iso: string): string {
-  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  return days === 1 ? "yesterday" : `${days}d ago`;
-}
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -68,7 +51,6 @@ export default function DashboardPage() {
   const [docs, setDocs] = useState<DocRow[]>([]);
   const [needsReviewIds, setNeedsReviewIds] = useState<Set<string>>(new Set());
   const [openTasksCount, setOpenTasksCount] = useState(0);
-  const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [conflicts, setConflicts] = useState<ConflictGroup[]>([]);
   const [city, setCity] = useState("");
@@ -93,7 +75,7 @@ export default function DashboardPage() {
         setName(user.user_metadata?.full_name?.split(" ")[0] || "there");
       }
 
-      const [{ data: docRows }, { count: openTasks }, { data: deadlineRows }, { data: fieldRows }, { data: profile }, { data: activityRows }] =
+      const [{ data: docRows }, { count: openTasks }, { data: deadlineRows }, { data: fieldRows }, { data: profile }] =
         await Promise.all([
           supabase.from("documents").select("id, file_name, doc_type, doc_category, status, uploaded_at").order("uploaded_at", { ascending: false }),
           supabase.from("tasks").select("*", { count: "exact", head: true }).eq("done", false),
@@ -106,9 +88,7 @@ export default function DashboardPage() {
           user
             ? supabase.from("profiles").select("city, agent_permission").eq("id", user.id).single()
             : Promise.resolve({ data: null }),
-          supabase.from("activity_log").select("id, action, details, created_at").order("created_at", { ascending: false }).limit(5),
         ]);
-      setActivity((activityRows as ActivityRow[]) || []);
 
       setDocs(docRows || []);
       setOpenTasksCount(openTasks || 0);
@@ -298,7 +278,7 @@ export default function DashboardPage() {
 
       <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1.9fr_1fr] gap-4 items-start">
         <div className="space-y-4">
-          <section className="card">
+          <section className="card flex flex-col min-h-[340px]">
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
                 <span className="w-8 h-8 rounded-lg bg-[#FFF7ED] text-[#EA580C] flex items-center justify-center"><BellIcon className="w-4 h-4" /></span>
@@ -310,12 +290,14 @@ export default function DashboardPage() {
             </div>
 
             {deadlines.length === 0 ? (
-              <p className="px-5 pb-6 text-sm text-[#64748B]">
-                No dates on the horizon. Expiry dates from your documents show up here.
-              </p>
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6 pb-6">
+                <span className="w-12 h-12 rounded-2xl bg-[#FFF7ED] text-[#EA580C] flex items-center justify-center mb-3"><BellIcon className="w-6 h-6" /></span>
+                <p className="text-sm font-semibold text-[#0F172A]">No dates on the horizon</p>
+                <p className="text-xs text-[#64748B] mt-1 max-w-xs">Expiry and renewal dates from your documents appear here, soonest first.</p>
+              </div>
             ) : (
-              <ul className="divide-y divide-[#E6E8EE]/70">
-                {deadlines.slice(0, 4).map((d) => {
+              <ul className="divide-y divide-[#E6E8EE]/70 flex-1">
+                {deadlines.slice(0, 5).map((d) => {
                   const days = daysLeft(d.expiry_date);
                   const date = new Date(d.expiry_date);
                   return (
@@ -335,6 +317,12 @@ export default function DashboardPage() {
                   );
                 })}
               </ul>
+            )}
+
+            {deadlines.length > 0 && deadlines.length < 3 && (
+              <p className="px-5 py-3 text-xs text-[#94A3B8] flex-1">
+                More dates appear here as you add documents.
+              </p>
             )}
 
             {nearestDeadline && nearestDays !== null && nearestDays <= 30 && (
@@ -377,31 +365,6 @@ export default function DashboardPage() {
             <Tile href="/dashboard/tasks" label="Add" hint="New task" tone="from-[#16A34A] to-[#0D9488]" icon={<CheckSquareIcon className="w-5 h-5" />} />
             <Tile href="/dashboard/scan" label="Fill" hint="Complete a form" tone="from-[#F97316] to-[#DB2777]" icon={<ScanIcon className="w-5 h-5" />} />
           </div>
-
-          {activity.length > 0 && (
-            <section className="card">
-              <div className="flex items-center justify-between px-5 pt-5 pb-3">
-                <h2 className="text-lg font-bold text-[#0F172A]">Recent activity</h2>
-                <Link href="/dashboard/activity" className="text-xs px-3 py-1.5 rounded-full border border-[#E6E8EE] text-[#1E293B] font-medium hover:bg-[#F8FAFC]">
-                  View all
-                </Link>
-              </div>
-              <ul className="divide-y divide-[#E6E8EE]/70">
-                {activity.map((a) => {
-                  const byNexus = /^(process|agent|scan|calendar)$/.test(a.action) && !(a.details?.message || "").startsWith("You ");
-                  return (
-                    <li key={a.id} className="flex items-center gap-3 px-5 py-3">
-                      <span className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${byNexus ? "bg-[#0F172A] text-white" : "bg-[#EAF2FF] text-[#2563EB]"}`}>
-                        {byNexus ? <SparkleIcon className="w-3.5 h-3.5" /> : <span className="text-xs font-bold">{(name || "Y").charAt(0).toUpperCase()}</span>}
-                      </span>
-                      <p className="text-sm text-[#1E293B] truncate flex-1">{a.details?.message || a.action}</p>
-                      <span className="text-[11px] text-[#94A3B8] shrink-0">{timeAgo(a.created_at)}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )}
 
           {openTasksCount > 0 && (
             <Link href="/dashboard/tasks" className="card card-hover flex items-center gap-3 px-5 py-4">
