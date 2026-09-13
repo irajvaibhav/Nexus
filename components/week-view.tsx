@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { weatherEmoji, type DailyForecast } from "@/lib/weather";
 import { CalendarIcon, SparkleIcon } from "@/components/icons";
+import { useState } from "react";
+import { reverseGeocode } from "@/lib/weather";
 
 export type WeekEvent = { id: string; title: string; start: string; end: string; allDay: boolean; htmlLink: string | null };
 export type WeekDeadline = { id: string; title: string; expiry_date: string };
@@ -21,6 +23,7 @@ type Props = {
   addState?: "idle" | "adding" | "added";
   addedLink?: string | null;
   canExecute: boolean;
+  onSetCity?: (city: string) => Promise<void> | void;
 };
 
 function dayKey(d: Date): string {
@@ -137,7 +140,7 @@ export function WeekView(p: Props) {
         <div className="flex-1 min-w-0">
           <p className="text-sm text-[#1E293B] leading-relaxed">
             {p.weatherState === "idle" ? (
-              <><Link href="/dashboard/settings" className="text-[#2563EB] font-semibold">Add your city</Link> and NEXUS will read the forecast against your calendar to pick good days.</>
+              <>Add your city and NEXUS will read the forecast against your calendar to pick good days.</>
             ) : p.weatherState === "error" ? (
               <>Forecast unavailable right now. <button onClick={p.onRetryWeather} className="text-[#2563EB] font-semibold">Retry</button></>
             ) : p.weatherState === "loading" ? (
@@ -155,6 +158,7 @@ export function WeekView(p: Props) {
               </>
             )}
           </p>
+          {p.weatherState === "idle" && p.onSetCity && <CityForm onSave={p.onSetCity} />}
           {p.suggestion && p.weatherState === "ready" && (
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               {p.addState === "added" ? (
@@ -175,5 +179,66 @@ export function WeekView(p: Props) {
         </div>
       </div>
     </section>
+  );
+}
+
+// Inline city entry so the user never has to leave Home to get the forecast.
+function CityForm({ onSave }: { onSave: (city: string) => Promise<void> | void }) {
+  const [city, setCity] = useState("");
+  const [busy, setBusy] = useState<"" | "saving" | "locating">("");
+  const [note, setNote] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!city.trim()) return;
+    setBusy("saving");
+    await onSave(city.trim());
+    setBusy("");
+  }
+
+  function locate() {
+    if (!("geolocation" in navigator)) {
+      setNote("This browser can't share your location. Type your city instead.");
+      return;
+    }
+    setBusy("locating");
+    setNote("");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const place = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+          if (place) {
+            setCity(place.city);
+            await onSave(place.city);
+          } else setNote("Couldn't find a city for your position. Type it instead.");
+        } catch {
+          setNote("Couldn't read your location. Type your city instead.");
+        }
+        setBusy("");
+      },
+      () => {
+        setNote("Location access was blocked. Type your city instead.");
+        setBusy("");
+      },
+      { timeout: 10000 }
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-2.5 flex items-center gap-2 flex-wrap">
+      <input
+        value={city}
+        onChange={(e) => setCity(e.target.value)}
+        placeholder="Your city, e.g. Mumbai"
+        className="flex-1 min-w-[180px] px-3 py-2 bg-white border border-[#CFE0FF] rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] text-[#1E293B] placeholder-[#94A3B8]"
+      />
+      <button type="submit" disabled={busy !== "" || !city.trim()} className="text-xs px-3.5 py-2 rounded-full bg-[#0F172A] text-white font-semibold hover:bg-[#1E293B] disabled:opacity-50">
+        {busy === "saving" ? "Saving…" : "Save"}
+      </button>
+      <button type="button" onClick={locate} disabled={busy !== ""} className="text-xs px-3.5 py-2 rounded-full bg-white border border-[#CFE0FF] text-[#1E293B] font-semibold hover:bg-[#F8FAFC] disabled:opacity-50">
+        {busy === "locating" ? "Locating…" : "Use my location"}
+      </button>
+      {note && <p className="w-full text-[11px] text-[#DB2777]">{note}</p>}
+    </form>
   );
 }

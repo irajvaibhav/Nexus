@@ -191,6 +191,13 @@ export default function DashboardPage() {
   const suggestedDay = bestUpcomingDay(freeCandidates.length > 0 ? freeCandidates : forecastWithinWindow);
   const canExecute = agentPermission === "execute";
 
+  async function saveCity(next: string) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("profiles").update({ city: next }).eq("id", user.id);
+    setCity(next);
+  }
+
   function goAsk(question: string) {
     router.push(`/dashboard/ask?q=${encodeURIComponent(question)}`);
   }
@@ -343,6 +350,7 @@ export default function DashboardPage() {
           addState={addedToCalendar ? "added" : addingToCalendar ? "adding" : "idle"}
           addedLink={addedLink}
           canExecute={canExecute}
+          onSetCity={saveCity}
         />
         {calendarError && <p className="mt-2 text-xs text-[#DB2777]">{calendarError}</p>}
       </div>
