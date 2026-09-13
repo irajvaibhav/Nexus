@@ -144,3 +144,23 @@ html {
   background-size: 800px 100%;
   animation: shimmer 1.4s linear infinite;
 }
+
+/* Landing stage: three Q&A pairs take turns (15s loop, 5s each) */
+@keyframes qa-cycle {
+  0%        { opacity: 0; transform: translateY(8px); }
+  4%, 30%   { opacity: 1; transform: translateY(0); }
+  33.3%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+@keyframes qa-answer {
+  0%, 8%    { opacity: 0; transform: translateY(6px); }
+  14%, 30%  { opacity: 1; transform: translateY(0); }
+  33.3%, 100% { opacity: 0; }
+}
+.qa { opacity: 0; animation: qa-cycle 15s ease-in-out infinite; }
+.qa .qa-answer { opacity: 0; animation: qa-answer 15s ease-in-out infinite; }
+
+/* Floating side cards */
+@keyframes float-y { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+.float-a { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both, float-y 6s ease-in-out 0.6s infinite; }
+.float-b { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both, float-y 7s ease-in-out 1s infinite; }
+.float-c { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both, float-y 6.5s ease-in-out 1.4s infinite; }
