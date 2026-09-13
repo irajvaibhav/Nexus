@@ -27,6 +27,13 @@ type DocRow = {
   uploaded_at: string;
 };
 
+type ActivityRow = {
+  id: string;
+  action: string;
+  details: { message?: string } | null;
+  created_at: string;
+};
+
 type Attention = {
   key: string;
   icon: string;
@@ -36,6 +43,16 @@ type Attention = {
   tone: "blue" | "amber" | "rose";
   onAction: () => void;
 };
+
+function timeAgo(iso: string): string {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? "yesterday" : `${days}d ago`;
+}
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -51,6 +68,7 @@ export default function DashboardPage() {
   const [docs, setDocs] = useState<DocRow[]>([]);
   const [needsReviewIds, setNeedsReviewIds] = useState<Set<string>>(new Set());
   const [openTasksCount, setOpenTasksCount] = useState(0);
+  const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [conflicts, setConflicts] = useState<ConflictGroup[]>([]);
   const [city, setCity] = useState("");
@@ -75,7 +93,7 @@ export default function DashboardPage() {
         setName(user.user_metadata?.full_name?.split(" ")[0] || "there");
       }
 
-      const [{ data: docRows }, { count: openTasks }, { data: deadlineRows }, { data: fieldRows }, { data: profile }] =
+      const [{ data: docRows }, { count: openTasks }, { data: deadlineRows }, { data: fieldRows }, { data: profile }, { data: activityRows }] =
         await Promise.all([
           supabase.from("documents").select("id, file_name, doc_type, doc_category, status, uploaded_at").order("uploaded_at", { ascending: false }),
           supabase.from("tasks").select("*", { count: "exact", head: true }).eq("done", false),
@@ -88,7 +106,9 @@ export default function DashboardPage() {
           user
             ? supabase.from("profiles").select("city, agent_permission").eq("id", user.id).single()
             : Promise.resolve({ data: null }),
+          supabase.from("activity_log").select("id, action, details, created_at").order("created_at", { ascending: false }).limit(5),
         ]);
+      setActivity((activityRows as ActivityRow[]) || []);
 
       setDocs(docRows || []);
       setOpenTasksCount(openTasks || 0);
@@ -357,6 +377,31 @@ export default function DashboardPage() {
             <Tile href="/dashboard/tasks" label="Add" hint="New task" tone="from-[#16A34A] to-[#0D9488]" icon={<CheckSquareIcon className="w-5 h-5" />} />
             <Tile href="/dashboard/scan" label="Fill" hint="Complete a form" tone="from-[#F97316] to-[#DB2777]" icon={<ScanIcon className="w-5 h-5" />} />
           </div>
+
+          {activity.length > 0 && (
+            <section className="card">
+              <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                <h2 className="text-lg font-bold text-[#0F172A]">Recent activity</h2>
+                <Link href="/dashboard/activity" className="text-xs px-3 py-1.5 rounded-full border border-[#E6E8EE] text-[#1E293B] font-medium hover:bg-[#F8FAFC]">
+                  View all
+                </Link>
+              </div>
+              <ul className="divide-y divide-[#E6E8EE]/70">
+                {activity.map((a) => {
+                  const byNexus = /^(process|agent|scan|calendar)$/.test(a.action) && !(a.details?.message || "").startsWith("You ");
+                  return (
+                    <li key={a.id} className="flex items-center gap-3 px-5 py-3">
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${byNexus ? "bg-[#0F172A] text-white" : "bg-[#EAF2FF] text-[#2563EB]"}`}>
+                        {byNexus ? <SparkleIcon className="w-3.5 h-3.5" /> : <span className="text-xs font-bold">{(name || "Y").charAt(0).toUpperCase()}</span>}
+                      </span>
+                      <p className="text-sm text-[#1E293B] truncate flex-1">{a.details?.message || a.action}</p>
+                      <span className="text-[11px] text-[#94A3B8] shrink-0">{timeAgo(a.created_at)}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
 
           {openTasksCount > 0 && (
             <Link href="/dashboard/tasks" className="card card-hover flex items-center gap-3 px-5 py-4">
