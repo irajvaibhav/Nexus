@@ -328,8 +328,8 @@ function AskNexus() {
             <div
               className={`max-w-[85%] rounded-2xl px-4 py-3.5 ${
                 msg.role === "user"
-                  ? "bg-[#2563EB] text-white rounded-br-md"
-                  : "bg-white border border-[#E6E8EE] text-[#1E293B] shadow-sm"
+                  ? "bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white rounded-br-md shadow-lg shadow-[#2563EB]/25"
+                  : "card text-[#1E293B]"
               }`}
             >
               {msg.imageUrl && (

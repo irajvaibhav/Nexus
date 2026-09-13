@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, Fraunces } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-const fraunces = Fraunces({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-serif",
-  weight: ["500", "600"],
-  style: ["normal", "italic"],
+  variable: "--font-display",
+  weight: ["600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -22,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${fraunces.variable} font-sans antialiased text-[#1E293B] bg-[#F6F7F9]`}>
+      <body className={`${inter.variable} ${jakarta.variable} font-sans antialiased text-[#1E293B] bg-[#F6F7F9]`}>
         {children}
       </body>
     </html>

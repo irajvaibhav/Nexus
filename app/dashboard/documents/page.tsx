@@ -7,6 +7,7 @@ import { docHealth, LOW_CONFIDENCE_THRESHOLD, type HealthKey } from "@/lib/doc-s
 import { daysLeft } from "@/lib/dates";
 import { deleteDocumentCascade } from "@/lib/delete-document";
 import { uploadWithProgress, processDocument, type ProcessingStage } from "@/lib/upload";
+import { DocIcon } from "@/components/doc-icon";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, useCallback } from "react";
 
@@ -435,7 +436,7 @@ function DocumentsPageInner() {
     <div className="animate-fade-in-up">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-[#0F172A]">Vault</h1>
+          <h1 className="text-4xl font-bold text-[#0F172A]">Vault</h1>
           <p className="text-sm text-[#64748B] mt-2">
             {docs.length === 0
               ? "Nothing here yet"
@@ -458,7 +459,7 @@ function DocumentsPageInner() {
           </div>
           <button
             onClick={() => setShowUpload((v) => !v)}
-            className="px-4 py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-full text-sm font-semibold transition-colors"
+            className="px-4 py-2.5 bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white rounded-full text-sm font-semibold shadow-md shadow-[#2563EB]/30 hover:shadow-lg transition-shadow"
           >
             + Add document
           </button>
@@ -473,9 +474,7 @@ function DocumentsPageInner() {
             <button
               key={cat.name}
               onClick={() => setCategory(active ? null : cat.name)}
-              className={`bg-white rounded-2xl border py-4 flex flex-col items-center gap-2 transition-all ${
-                active ? "border-[#2563EB] shadow-sm" : "border-[#E6E8EE] hover:border-[#2563EB]/40"
-              }`}
+              className={`card card-hover py-4 flex flex-col items-center gap-2 ${active ? "!border-[#2563EB] ring-2 ring-[#2563EB]/15" : ""}`}
             >
               <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${cat.color}`}>{cat.icon}</span>
               <span className="text-xs font-medium text-[#0F172A] px-2 truncate max-w-full">{cat.name}</span>
@@ -587,7 +586,7 @@ function DocumentsPageInner() {
         </div>
       )}
 
-      <div className="mt-5 bg-white rounded-2xl border border-[#E6E8EE] overflow-hidden">
+      <div className="mt-5 card overflow-hidden">
         <div className="grid grid-cols-[1fr_140px_110px_130px_40px] gap-3 px-5 py-3 border-b border-[#E6E8EE]
           text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
           <span>Document</span>
@@ -617,9 +616,7 @@ function DocumentsPageInner() {
                 <div key={doc.id} className="grid grid-cols-[1fr_140px_110px_130px_40px] gap-3 items-center px-5 py-3.5
                   hover:bg-[#F8FAFC] transition-colors">
                   <Link href={`/dashboard/documents/${doc.id}`} className="flex items-center gap-3 min-w-0">
-                    <span className="w-9 h-9 rounded-lg bg-[#EAF2FF] flex items-center justify-center text-base shrink-0">
-                      {doc.file_type === "application/pdf" ? "📄" : "🖼️"}
-                    </span>
+                    <DocIcon docType={doc.doc_type} fileName={doc.file_name} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-[#0F172A] truncate">{doc.file_name}</p>
                       <p className="text-xs text-[#64748B] truncate capitalize">

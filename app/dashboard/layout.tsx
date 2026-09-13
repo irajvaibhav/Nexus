@@ -62,14 +62,15 @@ export default function DashboardLayout({
     router.push(q ? `/dashboard/ask?q=${encodeURIComponent(q)}` : "/dashboard/ask");
   }
 
-  const onAskPage = pathname === "/dashboard/ask";
+  // Home carries its own Ask box in the hero; the chat page has its composer.
+  const onAskPage = pathname === "/dashboard/ask" || pathname === "/dashboard";
 
   return (
     <div className="min-h-screen flex bg-[#F6F7F9]">
       <aside className="w-[96px] flex flex-col items-center fixed h-full bg-white border-r border-[#E6E8EE] z-20 py-5">
         <Link
           href="/dashboard"
-          className="w-12 h-12 rounded-2xl bg-[#0F172A] text-white flex items-center justify-center shadow-md shadow-[#0F172A]/15
+          className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0F172A] to-[#1E3A8A] text-white flex items-center justify-center shadow-lg shadow-[#1E3A8A]/30
             hover:scale-105 transition-transform"
           title="NEXUS"
         >
@@ -139,8 +140,8 @@ export default function DashboardLayout({
           <div className="fixed bottom-6 left-[96px] right-0 flex justify-center px-6 pointer-events-none z-30">
             <form
               onSubmit={(e) => { e.preventDefault(); submitAsk(); }}
-              className="pointer-events-auto w-full max-w-xl flex items-center gap-2 bg-white/95 backdrop-blur rounded-2xl
-                border border-[#E6E8EE] shadow-xl shadow-[#0F172A]/10 pl-4 pr-2 py-2 transition-shadow focus-within:shadow-2xl
+              className="pointer-events-auto w-full max-w-xl flex items-center gap-2 glass rounded-2xl
+                border border-white/70 shadow-2xl shadow-[#0F172A]/15 pl-4 pr-2 py-2 transition-shadow focus-within:shadow-2xl
                 focus-within:border-[#2563EB]/40"
             >
               <SparkleIcon className="w-5 h-5 text-[#2563EB] shrink-0" />
@@ -159,7 +160,7 @@ export default function DashboardLayout({
               </Link>
               <button
                 type="submit"
-                className="w-11 h-11 rounded-xl bg-[#2563EB] text-white flex items-center justify-center hover:bg-[#1D4ED8] transition-colors"
+                className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center shadow-md shadow-[#2563EB]/30 hover:shadow-lg transition-shadow"
                 aria-label="Ask"
               >
                 <ArrowUpIcon className="w-5 h-5" />

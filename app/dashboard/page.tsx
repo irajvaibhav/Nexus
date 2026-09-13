@@ -7,7 +7,8 @@ import { daysLeft, daysLabel } from "@/lib/dates";
 import { docHealth, LOW_CONFIDENCE_THRESHOLD } from "@/lib/doc-status";
 import { detectConflicts, type ConflictGroup } from "@/lib/conflicts";
 import { geocodeCity, getDailyForecast, bestUpcomingDay, weatherEmoji, type DailyForecast } from "@/lib/weather";
-import { DocumentsIcon, ChatIcon, ScanIcon, CheckSquareIcon, SparkleIcon } from "@/components/icons";
+import { DocumentsIcon, ChatIcon, ScanIcon, CheckSquareIcon, SparkleIcon, ArrowUpIcon, BellIcon } from "@/components/icons";
+import { DocIcon } from "@/components/doc-icon";
 import { useCallback, useEffect, useState } from "react";
 
 type Deadline = {
@@ -64,6 +65,7 @@ export default function DashboardPage() {
   const [addedLink, setAddedLink] = useState<string | null>(null);
   const [addedToCalendar, setAddedToCalendar] = useState(false);
   const [calendarError, setCalendarError] = useState("");
+  const [askInput, setAskInput] = useState("");
 
   const docFileNames = new Map(docs.map((d) => [d.id, d.file_name]));
 
@@ -249,24 +251,66 @@ export default function DashboardPage() {
 
   return (
     <div className="animate-fade-in-up">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748B]">{today}</p>
-      <h1 className="text-4xl font-semibold tracking-tight text-[#0F172A] mt-2">
-        {greeting()}, {name || "there"}.
-      </h1>
+      <section className="hero relative overflow-hidden rounded-[28px] text-white px-8 py-8 shadow-2xl shadow-[#0F172A]/25">
+        <div className="relative flex items-start justify-between gap-6 flex-wrap">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">{today}</p>
+            <h1 className="text-[40px] leading-[1.05] font-bold mt-2">
+              {greeting()}, {name || "there"}.
+            </h1>
+            <p className="mt-3 text-[15px] text-white/70 max-w-lg">
+              {attention.length === 0
+                ? docs.length === 0
+                  ? "Add your first document and NEXUS starts keeping track."
+                  : "Nothing pending. Everything is in order."
+                : attention.length === 1
+                ? "One thing needs your attention today."
+                : `${attention.length} things need your attention today.`}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Stat label="Documents" value={docs.length} />
+            <Stat label="Coming up" value={deadlines.length} />
+            <Stat label="Open tasks" value={openTasksCount} />
+          </div>
+        </div>
 
-      <p className="text-sm text-[#64748B] mt-6 mb-3">What needs your attention</p>
+        <form
+          onSubmit={(e) => { e.preventDefault(); goAsk(askInput.trim() || "What needs my attention?"); }}
+          className="relative mt-7 flex items-center gap-2 rounded-2xl bg-white/10 border border-white/15 backdrop-blur px-4 py-2
+            focus-within:bg-white/15 focus-within:border-white/30 transition-colors"
+        >
+          <SparkleIcon className="w-5 h-5 text-[#93C5FD] shrink-0" />
+          <input
+            value={askInput}
+            onChange={(e) => setAskInput(e.target.value)}
+            placeholder="Ask NEXUS anything about your documents…"
+            className="flex-1 py-2 bg-transparent text-[15px] text-white placeholder-white/50 focus:outline-none"
+          />
+          <button type="submit" className="w-10 h-10 rounded-xl bg-white text-[#0F172A] flex items-center justify-center hover:bg-[#EAF2FF] transition-colors" aria-label="Ask">
+            <ArrowUpIcon className="w-5 h-5" />
+          </button>
+        </form>
+        <div className="relative mt-3 flex flex-wrap gap-1.5">
+          {["When does my insurance expire?", "What's my PAN number?", "What do I need for a car loan?"].map((q) => (
+            <button key={q} onClick={() => goAsk(q)} className="text-xs px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-white/80 hover:bg-white/20 transition-colors">
+              {q}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {attention.length > 0 && <p className="text-sm font-semibold text-[#0F172A] mt-8 mb-3">What needs your attention</p>}
       {attention.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-[#E6E8EE] px-5 py-4 flex items-center gap-3">
-          <span className="w-9 h-9 rounded-full bg-[#F0FDF4] text-[#15803D] flex items-center justify-center">✓</span>
-          <p className="text-sm text-[#1E293B]">
-            {docs.length === 0 ? "Nothing yet. Add your first document to get started." : "Nothing pending. Everything is in order."}
-          </p>
-          {docs.length === 0 && (
-            <Link href="/dashboard/documents" className="ml-auto px-4 py-2 rounded-full bg-[#2563EB] text-white text-sm font-semibold hover:bg-[#1D4ED8]">
+        docs.length === 0 ? (
+          <div className="card mt-8 px-5 py-4 flex items-center gap-3">
+            <span className="w-9 h-9 rounded-full bg-gradient-to-br from-[#DBEAFE] to-[#BFDBFE] text-[#1D4ED8] flex items-center justify-center font-bold">+</span>
+            <p className="text-sm text-[#1E293B]">Add your first document to get started.</p>
+            <Link href="/dashboard/documents" className="ml-auto px-4 py-2 rounded-full bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white text-sm font-semibold shadow-md shadow-[#2563EB]/30">
               Add document
             </Link>
-          )}
-        </div>
+          </div>
+        ) : null
       ) : (
         <div className={`grid grid-cols-1 gap-3 ${attention.length > 1 ? "md:grid-cols-2" : ""}`}>
           {attention.map((a, i) => (
@@ -275,11 +319,14 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1.9fr_1fr] gap-4 items-start">
+      <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1.9fr_1fr] gap-4 items-start">
         <div className="space-y-4">
-          <section className="bg-white rounded-2xl border border-[#E6E8EE]">
+          <section className="card">
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
-              <h2 className="text-base font-semibold text-[#0F172A]">Coming up</h2>
+              <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
+                <span className="w-8 h-8 rounded-lg bg-[#FFF7ED] text-[#EA580C] flex items-center justify-center"><BellIcon className="w-4 h-4" /></span>
+                Coming up
+              </h2>
               <Link href="/dashboard/reminders" className="text-xs px-3 py-1.5 rounded-full border border-[#E6E8EE] text-[#1E293B] font-medium hover:bg-[#F8FAFC]">
                 View all
               </Link>
@@ -295,10 +342,10 @@ export default function DashboardPage() {
                   const days = daysLeft(d.expiry_date);
                   const date = new Date(d.expiry_date);
                   return (
-                    <li key={d.id} className="grid grid-cols-[64px_1fr_auto] items-center gap-4 px-5 py-3.5">
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-[#0F172A] leading-tight">{date.getDate()}</p>
-                        <p className="text-[11px] text-[#64748B] uppercase">{date.toLocaleDateString(undefined, { month: "short" })}</p>
+                    <li key={d.id} className="grid grid-cols-[56px_1fr_auto] items-center gap-4 px-5 py-3.5 hover:bg-[#F8FAFC] transition-colors">
+                      <div className={`rounded-xl py-1.5 text-center ${days < 0 ? "bg-[#FDF2F8] text-[#DB2777]" : days <= 14 ? "bg-[#FFFBEB] text-[#D97706]" : "bg-[#F1F5F9] text-[#0F172A]"}`}>
+                        <p className="text-base font-bold leading-tight">{date.getDate()}</p>
+                        <p className="text-[10px] font-semibold uppercase opacity-80">{date.toLocaleDateString(undefined, { month: "short" })}</p>
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-[#0F172A] truncate">{d.title}</p>
@@ -314,8 +361,8 @@ export default function DashboardPage() {
             )}
 
             {nearestDeadline && nearestDays !== null && nearestDays <= 30 && (
-              <div className="mx-5 mb-5 mt-2 rounded-xl bg-[#F8FAFC] border border-[#E6E8EE] px-4 py-3 flex items-center gap-3 flex-wrap">
-                <span className="w-7 h-7 rounded-full bg-[#EAF2FF] text-[#2563EB] flex items-center justify-center shrink-0"><SparkleIcon className="w-4 h-4" /></span>
+              <div className="mx-5 mb-5 mt-2 rounded-xl bg-gradient-to-r from-[#EAF2FF] to-[#EEF2FF] border border-[#CFE0FF] px-4 py-3 flex items-center gap-3 flex-wrap">
+                <span className="w-8 h-8 rounded-full bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center shrink-0 shadow-md shadow-[#2563EB]/30"><SparkleIcon className="w-4 h-4" /></span>
                 <p className="text-sm text-[#1E293B] flex-1 min-w-[200px]">
                   {suggestedDay
                     ? <>NEXUS suggests <span className="font-semibold">{new Date(`${suggestedDay.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" })}</span> for the {nearestDeadline.title.toLowerCase()} renewal. {suggestedDay.description}, {suggestedDay.precipProbability}% rain.</>
@@ -348,14 +395,14 @@ export default function DashboardPage() {
           </section>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Tile href="/dashboard/documents" label="Scan" icon={<DocumentsIcon className="w-5 h-5" />} />
-            <Tile href="/dashboard/ask" label="Ask" icon={<ChatIcon className="w-5 h-5" />} />
-            <Tile href="/dashboard/tasks" label="Add" icon={<span className="text-lg leading-none">+</span>} />
-            <Tile href="/dashboard/scan" label="Fill" icon={<ScanIcon className="w-5 h-5" />} />
+            <Tile href="/dashboard/documents" label="Scan" hint="Add a document" tone="from-[#2563EB] to-[#4F46E5]" icon={<DocumentsIcon className="w-5 h-5" />} />
+            <Tile href="/dashboard/ask" label="Ask" hint="Get an answer" tone="from-[#0EA5E9] to-[#2563EB]" icon={<ChatIcon className="w-5 h-5" />} />
+            <Tile href="/dashboard/tasks" label="Add" hint="New task" tone="from-[#16A34A] to-[#0D9488]" icon={<CheckSquareIcon className="w-5 h-5" />} />
+            <Tile href="/dashboard/scan" label="Fill" hint="Complete a form" tone="from-[#F97316] to-[#DB2777]" icon={<ScanIcon className="w-5 h-5" />} />
           </div>
 
           {openTasksCount > 0 && (
-            <Link href="/dashboard/tasks" className="flex items-center gap-3 bg-white rounded-2xl border border-[#E6E8EE] px-5 py-4 hover:border-[#2563EB]/40 transition-colors">
+            <Link href="/dashboard/tasks" className="card card-hover flex items-center gap-3 px-5 py-4">
               <CheckSquareIcon className="w-5 h-5 text-[#2563EB]" />
               <p className="text-sm font-semibold text-[#1E293B]">
                 {openTasksCount} open task{openTasksCount === 1 ? "" : "s"}
@@ -375,9 +422,9 @@ export default function DashboardPage() {
             onRetry={loadWeather}
           />
 
-          <section className="bg-white rounded-2xl border border-[#E6E8EE] p-5">
+          <section className="card p-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-[#0F172A]">Documents</h2>
+              <h2 className="text-lg font-bold text-[#0F172A]">Documents</h2>
               <Link href="/dashboard/documents" className="text-xs px-3 py-1.5 rounded-full border border-[#E6E8EE] text-[#1E293B] font-medium hover:bg-[#F8FAFC]">
                 View all
               </Link>
@@ -389,9 +436,7 @@ export default function DashboardPage() {
                 {docs.slice(0, 3).map((doc) => (
                   <li key={doc.id}>
                     <Link href={`/dashboard/documents/${doc.id}`} className="flex items-center gap-3 group">
-                      <span className="w-9 h-9 rounded-lg bg-[#EAF2FF] text-[#2563EB] flex items-center justify-center text-sm shrink-0">
-                        {doc.file_name.toLowerCase().endsWith(".pdf") ? "📄" : "🖼️"}
-                      </span>
+                      <DocIcon docType={doc.doc_type} fileName={doc.file_name} />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-[#0F172A] truncate group-hover:text-[#2563EB]">{doc.file_name}</p>
                         <p className="text-xs text-[#64748B] truncate capitalize">{(doc.doc_type || doc.doc_category || "Document").replace(/_/g, " ")}</p>
@@ -403,8 +448,8 @@ export default function DashboardPage() {
             )}
           </section>
 
-          <section className="bg-[#F8FAFC] rounded-2xl border border-[#E6E8EE] p-5 flex gap-3">
-            <span className="w-9 h-9 rounded-full bg-[#0F172A] text-white flex items-center justify-center text-sm shrink-0">🔒</span>
+          <section className="rounded-2xl border border-[#E6E8EE] bg-gradient-to-br from-[#F8FAFC] to-[#EEF2FF] p-5 flex gap-3">
+            <span className="w-9 h-9 rounded-full bg-[#0F172A] text-white flex items-center justify-center text-sm shrink-0 shadow-md">🔒</span>
             <div>
               <p className="text-sm font-semibold text-[#0F172A]">Private by default</p>
               <p className="text-xs text-[#64748B] mt-0.5 leading-relaxed">
@@ -426,8 +471,8 @@ function AttentionCard({ item, primary }: { item: Attention; primary: boolean })
     rose: "bg-[#FDF2F8] text-[#DB2777]",
   };
   return (
-    <div className="bg-white rounded-2xl border border-[#E6E8EE] px-5 py-4 flex items-center gap-4">
-      <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${tones[tone]}`}>{icon}</span>
+    <div className="card card-hover px-5 py-4 flex items-center gap-4">
+      <span className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 ${tones[tone]}`}>{icon}</span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-[#0F172A] truncate">{title}</p>
         <p className="text-xs text-[#64748B] truncate">{detail}</p>
@@ -435,7 +480,7 @@ function AttentionCard({ item, primary }: { item: Attention; primary: boolean })
       <button
         onClick={onAction}
         className={`text-sm px-4 py-2 rounded-full font-semibold transition-colors shrink-0 ${
-          primary ? "bg-[#2563EB] text-white hover:bg-[#1D4ED8]" : "border border-[#E6E8EE] text-[#1E293B] hover:bg-[#F8FAFC]"
+          primary ? "bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white shadow-md shadow-[#2563EB]/30 hover:shadow-lg" : "border border-[#E6E8EE] text-[#1E293B] hover:bg-[#F8FAFC]"
         }`}
       >
         {action}
@@ -444,16 +489,22 @@ function AttentionCard({ item, primary }: { item: Attention; primary: boolean })
   );
 }
 
-function Tile({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) {
+function Tile({ href, label, hint, tone, icon }: { href: string; label: string; hint: string; tone: string; icon: React.ReactNode }) {
   return (
-    <Link
-      href={href}
-      className="bg-white rounded-2xl border border-[#E6E8EE] py-5 flex flex-col items-center gap-3
-        hover:border-[#2563EB]/40 hover:-translate-y-0.5 transition-all"
-    >
-      <span className="w-11 h-11 rounded-full bg-[#EAF2FF] text-[#2563EB] flex items-center justify-center">{icon}</span>
-      <span className="text-sm font-medium text-[#0F172A]">{label}</span>
+    <Link href={href} className="card card-hover py-5 flex flex-col items-center gap-2.5">
+      <span className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${tone} text-white flex items-center justify-center shadow-lg shadow-[#0F172A]/10`}>{icon}</span>
+      <span className="text-sm font-bold text-[#0F172A]">{label}</span>
+      <span className="text-[11px] text-[#64748B] -mt-1.5">{hint}</span>
     </Link>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="min-w-[92px] rounded-2xl bg-white/10 border border-white/10 px-4 py-3 text-center backdrop-blur">
+      <p className="text-2xl font-bold leading-none">{value}</p>
+      <p className="text-[11px] text-white/60 mt-1.5">{label}</p>
+    </div>
   );
 }
 
@@ -469,9 +520,10 @@ function WeatherCard({ city, label, state, error, forecast, onRetry }: {
   const best = bestUpcomingDay(forecast.slice(1));
 
   return (
-    <section className="bg-white rounded-2xl border border-[#E6E8EE] p-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-[#0F172A]">
+    <section className="card sky p-5 overflow-hidden relative">
+      <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-[#BFDBFE]/40 blur-2xl pointer-events-none" />
+      <div className="relative flex items-center justify-between">
+        <h2 className="text-lg font-bold text-[#0F172A]">
           {state === "ready" && label ? label.split(",")[0] : "Weather"}
         </h2>
         {state === "ready" && (
@@ -510,9 +562,9 @@ function WeatherCard({ city, label, state, error, forecast, onRetry }: {
       {state === "ready" && today && (
         <div className="mt-3">
           <div className="flex items-center gap-3">
-            <span className="text-3xl leading-none">{weatherEmoji(today.code)}</span>
+            <span className="text-5xl leading-none drop-shadow-sm">{weatherEmoji(today.code)}</span>
             <div>
-              <p className="text-2xl font-semibold text-[#0F172A] leading-tight">{today.tempMax}°</p>
+              <p className="text-4xl font-bold text-[#0F172A] leading-none">{today.tempMax}°</p>
               <p className="text-xs text-[#64748B]">{today.description} · {today.precipProbability}% rain</p>
             </div>
           </div>
@@ -520,7 +572,7 @@ function WeatherCard({ city, label, state, error, forecast, onRetry }: {
             {forecast.slice(1, 6).map((day) => (
               <div
                 key={day.date}
-                className={`rounded-xl px-1 py-2 text-center ${best?.date === day.date ? "bg-[#EAF2FF]" : "bg-[#F8FAFC]"}`}
+                className={`rounded-xl px-1 py-2 text-center border ${best?.date === day.date ? "bg-white border-[#93C5FD] shadow-sm" : "bg-white/60 border-transparent"}`}
                 title={`${day.description}, ${day.precipProbability}% rain`}
               >
                 <p className="text-[10px] font-semibold text-[#64748B]">
