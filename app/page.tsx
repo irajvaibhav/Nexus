@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase-server";
 import { NexusMark, NexusWordmark } from "@/components/brand";
-import { DocumentsIcon, ChatIcon, ScanIcon, CalendarIcon, SparkleIcon, ArrowUpIcon, MicIcon, BellIcon } from "@/components/icons";
+import { DocumentsIcon, ChatIcon, ScanIcon, CalendarIcon, SparkleIcon, ArrowUpIcon, MicIcon, BellIcon, LockIcon, EyeOffIcon, ShieldCheckIcon } from "@/components/icons";
 
 export default async function Landing() {
   const supabase = await createClient();
@@ -166,23 +166,41 @@ export default async function Landing() {
         </div>
       </section>
 
-      {/* Privacy */}
+      {/* Privacy + closing CTA */}
       <section id="privacy" className="max-w-7xl mx-auto px-6 py-20">
-        <div className="rounded-3xl bg-gradient-to-br from-[#0F172A] to-[#1E3A8A] text-white p-8 md:p-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="md:col-span-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#93C5FD]">Private by design</p>
-            <h2 className="mt-3 text-3xl font-bold">Your documents stay yours.</h2>
-          </div>
+        <div className="text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2563EB]">Private by design</p>
+          <h2 className="mt-3 text-3xl md:text-4xl font-bold text-[#0F172A]">Your documents stay yours.</h2>
+        </div>
+        <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-4 stagger">
           {[
-            { t: "Private storage", d: "Only your account can read your files." },
-            { t: "Masked by default", d: "Aadhaar, PAN and account numbers stay hidden until tapped." },
-            { t: "You approve first", d: "NEXUS waits for your go-ahead. Every action is logged." },
+            { icon: <LockIcon className="w-5 h-5" />, tone: "from-[#2563EB] to-[#4F46E5]", t: "Private storage", d: "Only your account can read your files." },
+            { icon: <EyeOffIcon className="w-5 h-5" />, tone: "from-[#0EA5E9] to-[#2563EB]", t: "Masked by default", d: "Aadhaar, PAN and account numbers stay hidden until tapped." },
+            { icon: <ShieldCheckIcon className="w-5 h-5" />, tone: "from-[#16A34A] to-[#0D9488]", t: "You approve first", d: "NEXUS waits for your go-ahead. Every action is logged." },
           ].map((x) => (
-            <div key={x.t} className="rounded-2xl bg-white/10 border border-white/10 p-5">
-              <p className="font-semibold">{x.t}</p>
-              <p className="mt-1 text-sm text-white/70 leading-relaxed">{x.d}</p>
+            <div key={x.t} className="card card-hover p-6 text-center">
+              <span className={`mx-auto w-12 h-12 rounded-2xl bg-gradient-to-br ${x.tone} text-white flex items-center justify-center shadow-md`}>{x.icon}</span>
+              <p className="mt-4 font-bold text-[#0F172A]">{x.t}</p>
+              <p className="mt-1 text-sm text-[#64748B] leading-relaxed">{x.d}</p>
             </div>
           ))}
+        </div>
+
+        <div className="mt-14 card p-8 md:p-10 text-center relative overflow-hidden">
+          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(600px_200px_at_50%_0%,_#EAF2FF_0%,_transparent_70%)]" />
+          <div className="relative">
+            <NexusMark size={48} className="mx-auto" />
+            <h3 className="mt-5 text-2xl md:text-3xl font-bold text-[#0F172A]">Ready when you are.</h3>
+            <p className="mt-2 text-[#64748B]">Free to start. Takes a minute.</p>
+            <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
+              <Link href="/signup" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white font-semibold shadow-lg shadow-[#2563EB]/30 hover:shadow-xl hover:-translate-y-0.5 transition-all">
+                Start free <span aria-hidden>→</span>
+              </Link>
+              <Link href="/login" className="px-7 py-3.5 rounded-full bg-white border border-[#E6E8EE] text-[#0F172A] font-semibold hover:border-[#0F172A] transition-colors">
+                Sign in
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
 
