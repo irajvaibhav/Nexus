@@ -153,7 +153,7 @@ export default async function Landing() {
               {[
                 { icon: <DocumentsIcon className="w-5 h-5" />, tone: "from-[#2563EB] to-[#4F46E5]", title: "Vault", text: "Every ID, policy and statement read once and searchable." },
                 { icon: <ChatIcon className="w-5 h-5" />, tone: "from-[#0EA5E9] to-[#2563EB]", title: "Ask NEXUS", text: "Type, speak or send a photo. Answers cite your documents." },
-                { icon: <CalendarIcon className="w-5 h-5" />, tone: "from-[#F59E0B] to-[#EA580C]", title: "Week view", text: "Calendar, deadlines and weather on one strip. NEXUS picks the day." },
+                { icon: <BellIcon className="w-5 h-5" />, tone: "from-[#F59E0B] to-[#EA580C]", title: "Reminders", text: "Expiry dates on your calendar, with a nudge before they hit." },
                 { icon: <ScanIcon className="w-5 h-5" />, tone: "from-[#F97316] to-[#DB2777]", title: "Scan & Fill", text: "Photograph a form, get it back filled as a PDF." },
               ].map((f) => (
                 <div key={f.title} className="card card-hover p-5">
