@@ -60,7 +60,7 @@ const JOB_STEPS: { key: JobStage; label: string; doing: string }[] = [
   { key: "uploading", label: "Upload", doing: "Uploading" },
   { key: "scanning", label: "Scan", doing: "Scanning the document" },
   { key: "extracting", label: "Extract", doing: "Extracting names, numbers and dates" },
-  { key: "analysing", label: "Analyse", doing: "Identifying what matters — expiry dates, people, categories" },
+  { key: "analysing", label: "Analyse", doing: "Identifying expiry dates, people and categories" },
   { key: "indexing", label: "Index", doing: "Making it searchable for Ask NEXUS" },
   { key: "ready", label: "Ready", doing: "Ready" },
 ];
@@ -100,6 +100,7 @@ function DocumentsPageInner() {
   const [customCategories, setCustomCategories] = useState<CustomCategoryRow[]>([]);
   const [jobs, setJobs] = useState<UploadJob[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [smartFilter, setSmartFilter] = useState<SmartFilter>("all");
@@ -427,39 +428,103 @@ function DocumentsPageInner() {
 
   const needsAttention = docs.filter((d) => {
     const key = healthFor(d).key;
-    return key === "expired" || key === "expiring" || key === "needs_review";
+    return key === "expired" || key === "expiring" || key === "needs_review" || key === "failed";
   }).length;
 
   return (
-    <div className="max-w-4xl animate-fade-in-up">
-      <h1 className="text-2xl font-serif font-semibold tracking-tight text-[#1A1412]">Documents</h1>
-      <p className="text-sm text-[#7C6E67] mt-1">
-        {docs.length === 0
-          ? "Upload your first document and NEXUS will read it for you."
-          : needsAttention === 0
-          ? `${docs.length} document${docs.length === 1 ? "" : "s"}, all in order.`
-          : `${needsAttention} of ${docs.length} document${docs.length === 1 ? "" : "s"} need${needsAttention === 1 ? "s" : ""} your attention.`}
-      </p>
+    <div className="animate-fade-in-up">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-4xl font-semibold tracking-tight text-[#0F172A]">Vault</h1>
+          <p className="text-sm text-[#64748B] mt-2">
+            {docs.length === 0
+              ? "Nothing here yet"
+              : `${docs.length} document${docs.length === 1 ? "" : "s"}`}
+            {needsAttention > 0 && ` · ${needsAttention} need${needsAttention === 1 ? "s" : ""} attention`}
+            {docs.length > 0 && needsAttention === 0 && " · All in order"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] text-sm">⌕</span>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search"
+              className="w-48 focus:w-72 transition-all pl-8 pr-3 py-2.5 bg-white border border-[#E6E8EE] rounded-full text-sm
+                focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent text-[#1E293B] placeholder-[#94A3B8]"
+            />
+          </div>
+          <button
+            onClick={() => setShowUpload((v) => !v)}
+            className="px-4 py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-full text-sm font-semibold transition-colors"
+          >
+            + Add document
+          </button>
+        </div>
+      </div>
 
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search documents, numbers, expiry dates…"
-        className="mt-5 w-full px-4 py-2.5 bg-white border border-[#E5DFD7] rounded-xl text-sm
-          focus:outline-none focus:ring-2 focus:ring-[#D95D39] focus:border-transparent
-          text-[#2E2724] placeholder-[#7C6E67]/50"
-      />
+      <div className="mt-6 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+        {categories.map((cat) => {
+          const count = docs.filter((d) => d.doc_category === cat.name).length;
+          const active = activeCategory === cat.name;
+          return (
+            <button
+              key={cat.name}
+              onClick={() => setCategory(active ? null : cat.name)}
+              className={`bg-white rounded-2xl border py-4 flex flex-col items-center gap-2 transition-all ${
+                active ? "border-[#2563EB] shadow-sm" : "border-[#E6E8EE] hover:border-[#2563EB]/40"
+              }`}
+            >
+              <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${cat.color}`}>{cat.icon}</span>
+              <span className="text-xs font-medium text-[#0F172A] px-2 truncate max-w-full">{cat.name}</span>
+              <span className="text-[11px] text-[#64748B]">{count}</span>
+            </button>
+          );
+        })}
+        {addingCategory ? (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const added = await addCustomCategory(newCategoryName);
+              setNewCategoryName("");
+              setAddingCategory(false);
+              if (added) setCategory(added);
+            }}
+            className="bg-white rounded-2xl border border-[#E6E8EE] p-3 flex flex-col gap-2"
+          >
+            <input
+              autoFocus
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onBlur={() => { if (!newCategoryName.trim()) setAddingCategory(false); }}
+              placeholder="Name"
+              className="text-xs px-2.5 py-1.5 border border-[#E6E8EE] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
+            />
+            <button type="submit" className="text-xs py-1.5 bg-[#2563EB] text-white rounded-lg font-medium">Add</button>
+          </form>
+        ) : (
+          <button
+            onClick={() => setAddingCategory(true)}
+            className="rounded-2xl border border-dashed border-[#E6E8EE] py-4 flex flex-col items-center gap-2 text-[#64748B]
+              hover:border-[#2563EB]/60 hover:text-[#2563EB] transition-colors"
+          >
+            <span className="w-10 h-10 rounded-xl bg-[#F8FAFC] flex items-center justify-center text-lg">+</span>
+            <span className="text-xs font-medium">New</span>
+          </button>
+        )}
+      </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      <div className="mt-5 flex flex-wrap items-center gap-1.5">
         {SMART_FILTERS.map((f) => (
           <button
             key={f.key}
             onClick={() => setSmartFilter(f.key)}
-            className={`text-xs px-3.5 py-1.5 rounded-full font-medium border transition-colors ${
+            className={`text-xs px-3.5 py-1.5 rounded-full font-medium transition-colors ${
               smartFilter === f.key
-                ? "bg-[#2E2724] text-white border-[#2E2724] shadow-sm"
-                : "bg-white text-[#7C6E67] border-[#E5DFD7] hover:border-[#2E2724] hover:text-[#2E2724]"
+                ? "bg-[#0F172A] text-white"
+                : "bg-white text-[#64748B] border border-[#E6E8EE] hover:text-[#0F172A]"
             }`}
           >
             {f.label}
@@ -468,18 +533,17 @@ function DocumentsPageInner() {
       </div>
 
       {smartFilter === "needs_review" && (
-        <div className="mt-3 rounded-2xl border border-[#F9DFE6] bg-[#FDF1F5]/60 px-4 py-3">
-          <p className="text-sm font-semibold text-[#C05C7B]">What &ldquo;Needs review&rdquo; means</p>
-          <p className="text-xs text-[#7C6E67] mt-1 leading-relaxed">
-            When NEXUS reads a document, it scores how sure it is about each value it pulls out. A
-            blurry photo, a smudged stamp or a handwritten date can leave it unsure. Those values are
-            what NEXUS uses to answer your questions and fill forms, so until you confirm or correct
-            them the document is flagged here. Open it, check the marked values, and NEXUS will treat
-            your version as certain from then on.
+        <div className="mt-3 rounded-2xl border border-[#FBCFE8] bg-[#FDF2F8]/60 px-4 py-3">
+          <p className="text-sm font-semibold text-[#DB2777]">About &ldquo;Needs review&rdquo;</p>
+          <p className="text-xs text-[#64748B] mt-1 leading-relaxed">
+            NEXUS scores how sure it is about each value it reads. A blurry scan or handwriting can
+            leave it unsure. Those values feed your answers and form-filling, so open the document
+            and confirm or correct them.
           </p>
         </div>
       )}
 
+      {(showUpload || docs.length === 0 || dragOver) && (
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -487,18 +551,18 @@ function DocumentsPageInner() {
         className={`mt-5 border-2 border-dashed rounded-2xl p-8 text-center
           transition-colors ${
             dragOver
-              ? "border-[#D95D39] bg-[#FDF2EE]"
-              : "border-[#E5DFD7] bg-white hover:border-[#D95D39]/50 hover:bg-[#FAF8F5]"
+              ? "border-[#2563EB] bg-[#EAF2FF]"
+              : "border-[#E6E8EE] bg-white hover:border-[#2563EB]/50 hover:bg-[#F8FAFC]"
           }`}
       >
         <div className="text-3xl mb-2">📄</div>
-        <p className="text-sm font-semibold text-[#2E2724]">
-          {uploading ? "Uploading…" : "Drag & drop your document here"}
+        <p className="text-sm font-semibold text-[#1E293B]">
+          {uploading ? "Uploading…" : "Drop a document here"}
         </p>
-        <p className="text-xs text-[#7C6E67] mt-1">PDF, JPG, PNG — Max 10MB each</p>
-        <label className="inline-block mt-4 px-4 py-2 bg-[#D95D39] text-white
-          rounded-xl text-sm font-medium cursor-pointer hover:bg-[#C24E2B]
-          transition-colors shadow-sm">
+        <p className="text-xs text-[#64748B] mt-1">PDF, JPG or PNG, up to 10MB each</p>
+        <label className="inline-block mt-4 px-4 py-2 bg-[#2563EB] text-white
+          rounded-full text-sm font-medium cursor-pointer hover:bg-[#1D4ED8]
+          transition-colors">
           Browse files
           <input
             type="file"
@@ -509,6 +573,7 @@ function DocumentsPageInner() {
           />
         </label>
       </div>
+      )}
 
       {error && (
         <p className="mt-3 text-sm text-red-600">{error}</p>
@@ -522,121 +587,51 @@ function DocumentsPageInner() {
         </div>
       )}
 
-      <div className="mt-8">
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <h2 className="text-base font-serif font-semibold text-[#1A1412]">
-            {search.trim() || smartFilter !== "all" ? "Matching documents" : "Uploaded Documents"} ({visibleDocs.length})
-          </h2>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              onClick={() => setCategory(null)}
-              className={`text-xs px-3.5 py-1.5 rounded-full font-medium border transition-colors ${
-                !activeCategory
-                  ? "bg-[#D95D39] text-white border-[#D95D39] shadow-sm"
-                  : "bg-white text-[#7C6E67] border-[#E5DFD7] hover:border-[#D95D39] hover:text-[#2E2724]"
-              }`}
-            >
-              All
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.name}
-                onClick={() => setCategory(cat.name)}
-                className={`text-xs px-3.5 py-1.5 rounded-full font-medium border transition-colors ${
-                  activeCategory === cat.name
-                    ? "bg-[#D95D39] text-white border-[#D95D39] shadow-sm"
-                    : "bg-white text-[#7C6E67] border-[#E5DFD7] hover:border-[#D95D39] hover:text-[#2E2724]"
-                }`}
-              >
-                {cat.icon} {cat.name} ({docs.filter((d) => d.doc_category === cat.name).length})
-              </button>
-            ))}
-
-            {addingCategory ? (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const added = await addCustomCategory(newCategoryName);
-                  setNewCategoryName("");
-                  setAddingCategory(false);
-                  if (added) setCategory(added);
-                }}
-                className="flex items-center gap-1"
-              >
-                <input
-                  autoFocus
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  onBlur={() => { if (!newCategoryName.trim()) setAddingCategory(false); }}
-                  placeholder="New category name"
-                  className="text-xs px-3 py-1.5 border border-[#E5DFD7] bg-[#FCFAF7] rounded-full
-                    focus:outline-none focus:ring-1 focus:ring-[#D95D39] text-[#2E2724] w-36"
-                />
-                <button
-                  type="submit"
-                  className="text-xs px-3 py-1.5 bg-[#D95D39] text-white rounded-full font-medium hover:bg-[#C24E2B]"
-                >
-                  Add
-                </button>
-              </form>
-            ) : (
-              <button
-                onClick={() => setAddingCategory(true)}
-                className="text-xs px-3.5 py-1.5 rounded-full font-medium border border-dashed
-                  border-[#E5DFD7] text-[#7C6E67] hover:border-[#D95D39] hover:text-[#D95D39]
-                  transition-colors cursor-pointer"
-              >
-                + Add category
-              </button>
-            )}
-          </div>
+      <div className="mt-5 bg-white rounded-2xl border border-[#E6E8EE] overflow-hidden">
+        <div className="grid grid-cols-[1fr_140px_110px_130px_40px] gap-3 px-5 py-3 border-b border-[#E6E8EE]
+          text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]">
+          <span>Document</span>
+          <span className="hidden md:block">Category</span>
+          <span className="hidden md:block">Added</span>
+          <span>Status</span>
+          <span />
         </div>
-
         {visibleDocs.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[#E5DFD7] p-8 text-center">
-            <p className="text-sm text-[#7C6E67]">
+          <div className="p-10 text-center">
+            <p className="text-sm text-[#64748B]">
               {search.trim()
                 ? `Nothing matches "${search.trim()}".`
                 : smartFilter !== "all"
-                ? "No documents in this state — nothing to worry about here."
+                ? "Nothing in this state."
                 : activeCategory
                 ? `No documents in ${activeCategory} yet.`
-                : "No documents yet. Upload your first document to get started."}
+                : "No documents yet."}
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-[#E5DFD7] divide-y
-            divide-[#E5DFD7]/50">
+          <div className="divide-y divide-[#E6E8EE]/70">
             {visibleDocs.map((doc) => {
               const health = healthFor(doc);
               const inFlight = jobs.some((j) => j.documentId === doc.id && j.stage !== "ready" && j.stage !== "failed");
               return (
-                <div key={doc.id} className="flex items-center justify-between px-4 py-3.5
-                  hover:bg-[#FCFAF7] transition-colors gap-3">
-                  <Link
-                    href={`/dashboard/documents/${doc.id}`}
-                    className="flex items-center gap-3 min-w-0 flex-1"
-                  >
-                    <span className="text-xl shrink-0">
-                      {doc.file_type === "application/pdf" ? "📕" : "🖼️"}
+                <div key={doc.id} className="grid grid-cols-[1fr_140px_110px_130px_40px] gap-3 items-center px-5 py-3.5
+                  hover:bg-[#F8FAFC] transition-colors">
+                  <Link href={`/dashboard/documents/${doc.id}`} className="flex items-center gap-3 min-w-0">
+                    <span className="w-9 h-9 rounded-lg bg-[#EAF2FF] flex items-center justify-center text-base shrink-0">
+                      {doc.file_type === "application/pdf" ? "📄" : "🖼️"}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-[#2E2724] truncate">{doc.file_name}</p>
-                      <p className="text-xs text-[#7C6E67] truncate">
-                        {new Date(doc.uploaded_at).toLocaleDateString()}
-                        {doc.doc_type && (
-                          <span className="ml-2 text-[#D95D39] font-medium">• {doc.doc_type}</span>
-                        )}
+                      <p className="text-sm font-medium text-[#0F172A] truncate">{doc.file_name}</p>
+                      <p className="text-xs text-[#64748B] truncate capitalize">
+                        {(doc.doc_type || "Document").replace(/_/g, " ")}
                         {health.key === "needs_review" && (
-                          <span className="ml-2 text-[#C05C7B]">
-                            • {docMeta.get(doc.id)?.lowConfidenceCount} value{docMeta.get(doc.id)?.lowConfidenceCount === 1 ? "" : "s"} to confirm
-                          </span>
+                          <span className="text-[#DB2777]"> · {docMeta.get(doc.id)?.lowConfidenceCount} to confirm</span>
                         )}
                       </p>
                     </div>
                   </Link>
-                  <div className="flex items-center gap-3 shrink-0">
-                    {doc.doc_category && (
+                  <div className="hidden md:block min-w-0">
+                    {doc.doc_category ? (
                       <button
                         onClick={() => {
                           setPromptSelected(doc.doc_category!);
@@ -648,19 +643,24 @@ function DocumentsPageInner() {
                           });
                         }}
                         title="Change category"
-                        className={`hidden sm:block text-[11px] px-2 py-1 rounded-full font-medium hover:opacity-75
-                          transition-opacity ${styleFor(doc.doc_category)}`}
+                        className={`text-[11px] px-2 py-1 rounded-full font-medium hover:opacity-75 transition-opacity truncate max-w-full ${styleFor(doc.doc_category)}`}
                       >
                         {doc.doc_category}
                       </button>
+                    ) : (
+                      <span className="text-xs text-[#94A3B8]">None</span>
                     )}
+                  </div>
+                  <span className="hidden md:block text-xs text-[#64748B]">
+                    {new Date(doc.uploaded_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                  <div>
                     {health.key === "failed" && !inFlight ? (
                       <button
                         onClick={() => retryProcessing(doc)}
-                        className="text-[11px] px-2 py-1 rounded-full font-semibold bg-[#FDF2EE] text-[#D95D39]
-                          border border-[#F5DFD6] hover:bg-[#F5DFD6] transition-colors"
+                        className="text-[11px] px-2 py-1 rounded-full font-semibold bg-[#EAF2FF] text-[#2563EB] hover:bg-[#CFE0FF] transition-colors"
                       >
-                        Couldn&apos;t read · Retry
+                        Retry
                       </button>
                     ) : (
                       <span className={`text-[11px] px-2 py-1 rounded-full font-medium inline-flex items-center gap-1.5 ${health.badge}`}>
@@ -668,14 +668,14 @@ function DocumentsPageInner() {
                         {health.label}
                       </span>
                     )}
-                    <button
-                      onClick={() => deleteDocument(doc)}
-                      className="text-[#7C6E67]/40 hover:text-red-500 transition-colors"
-                      title="Delete"
-                    >
-                      ✕
-                    </button>
                   </div>
+                  <button
+                    onClick={() => deleteDocument(doc)}
+                    className="text-[#94A3B8] hover:text-[#DB2777] transition-colors text-sm justify-self-end"
+                    title="Delete"
+                  >
+                    ✕
+                  </button>
                 </div>
               );
             })}
@@ -684,30 +684,28 @@ function DocumentsPageInner() {
       </div>
 
       {duplicatePrompt && (
-        <div className="fixed inset-0 bg-[#1A1412]/30 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E5DFD7]">
-            <h3 className="text-lg font-serif font-semibold text-[#1A1412]">
+        <div className="fixed inset-0 bg-[#0F172A]/30 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E6E8EE]">
+            <h3 className="text-lg font-semibold text-[#0F172A]">
               You already have a {duplicatePrompt.docType}
             </h3>
-            <p className="text-sm text-[#7C6E67] mt-1.5">
-              NEXUS already has{" "}
-              <span className="font-semibold text-[#2E2724]">{duplicatePrompt.existingFileName}</span>.
-              Should <span className="font-semibold text-[#2E2724]">{duplicatePrompt.newFileName}</span>{" "}
-              replace it, or do you want to keep both?
+            <p className="text-sm text-[#64748B] mt-1.5">
+              <span className="font-semibold text-[#1E293B]">{duplicatePrompt.existingFileName}</span> is already in your vault.
+              Replace it with the new one, or keep both?
             </p>
             <div className="mt-5 flex gap-2">
               <button
                 onClick={replaceDuplicate}
                 disabled={resolvingDuplicate}
-                className="flex-1 py-2.5 bg-[#D95D39] text-white rounded-xl text-sm font-semibold
-                  hover:bg-[#C24E2B] disabled:opacity-50 transition-colors shadow-sm"
+                className="flex-1 py-2.5 bg-[#2563EB] text-white rounded-xl text-sm font-semibold
+                  hover:bg-[#1D4ED8] disabled:opacity-50 transition-colors shadow-sm"
               >
-                {resolvingDuplicate ? "Replacing…" : "Replace the old one"}
+                {resolvingDuplicate ? "Replacing…" : "Replace"}
               </button>
               <button
                 onClick={() => setDuplicatePrompt(null)}
-                className="px-4 py-2.5 border border-[#E5DFD7] rounded-xl text-sm font-semibold
-                  text-[#2E2724] hover:bg-[#FCFAF7] transition-colors"
+                className="px-4 py-2.5 border border-[#E6E8EE] rounded-xl text-sm font-semibold
+                  text-[#1E293B] hover:bg-[#F6F7F9] transition-colors"
               >
                 Keep both
               </button>
@@ -717,24 +715,22 @@ function DocumentsPageInner() {
       )}
 
       {!duplicatePrompt && categoryPrompt && (
-        <div className="fixed inset-0 bg-[#1A1412]/30 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E5DFD7]">
+        <div className="fixed inset-0 bg-[#0F172A]/30 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#E6E8EE]">
             {categoryPrompt.fromUpload && (
               <div className="flex items-center gap-2 text-[11px] font-semibold mb-3">
-                <span className="px-2 py-0.5 rounded-full bg-[#F3F6F1] text-[#6E885B] border border-[#E1EAD8]">✓ Uploaded</span>
-                <span className="text-[#E5DFD7]">—</span>
-                <span className="px-2 py-0.5 rounded-full bg-[#F3F6F1] text-[#6E885B] border border-[#E1EAD8]">✓ Read</span>
-                <span className="text-[#E5DFD7]">—</span>
-                <span className="px-2 py-0.5 rounded-full bg-[#D95D39] text-white">3 Choose category</span>
+                <span className="px-2 py-0.5 rounded-full bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">✓ Uploaded</span>
+                <span className="w-3 h-px bg-[#E6E8EE]" />
+                <span className="px-2 py-0.5 rounded-full bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">✓ Read</span>
+                <span className="w-3 h-px bg-[#E6E8EE]" />
+                <span className="px-2 py-0.5 rounded-full bg-[#2563EB] text-white">3 Choose category</span>
               </div>
             )}
-            <h3 className="text-lg font-serif font-semibold text-[#1A1412]">
-              {categoryPrompt.fromUpload ? "One last step: where should this live?" : "Where should we save this?"}
+            <h3 className="text-lg font-semibold text-[#0F172A]">
+              {categoryPrompt.fromUpload ? "Choose a category" : "Change category"}
             </h3>
-            <p className="text-sm text-[#7C6E67] mt-1.5">
-              NEXUS read <span className="font-semibold text-[#2E2724]">{categoryPrompt.fileName}</span>{" "}
-              and suggests <span className="font-semibold text-[#D95D39]">{categoryPrompt.suggested}</span>.
-              Keep the suggestion or pick another category.
+            <p className="text-sm text-[#64748B] mt-1.5">
+              Suggested: <span className="font-semibold text-[#2563EB]">{categoryPrompt.suggested}</span>. Keep it or pick another.
             </p>
 
             <div className="mt-4 flex flex-wrap gap-2">
@@ -744,8 +740,8 @@ function DocumentsPageInner() {
                   onClick={() => setPromptSelected(cat.name)}
                   className={`text-xs px-3.5 py-1.5 rounded-full font-medium border transition-colors ${
                     promptSelected === cat.name
-                      ? "bg-[#D95D39] text-white border-[#D95D39] shadow-sm"
-                      : "bg-white text-[#7C6E67] border-[#E5DFD7] hover:border-[#D95D39]"
+                      ? "bg-[#2563EB] text-white border-[#2563EB] shadow-sm"
+                      : "bg-white text-[#64748B] border-[#E6E8EE] hover:border-[#2563EB]"
                   }`}
                 >
                   {cat.icon} {cat.name}
@@ -771,12 +767,12 @@ function DocumentsPageInner() {
                     onChange={(e) => setPromptNewName(e.target.value)}
                     onBlur={() => { if (!promptNewName.trim()) setPromptAdding(false); }}
                     placeholder="New category name"
-                    className="flex-1 text-xs px-3 py-1.5 border border-[#E5DFD7] bg-[#FCFAF7] rounded-full
-                      focus:outline-none focus:ring-1 focus:ring-[#D95D39] text-[#2E2724]"
+                    className="flex-1 text-xs px-3 py-1.5 border border-[#E6E8EE] bg-[#F6F7F9] rounded-full
+                      focus:outline-none focus:ring-1 focus:ring-[#2563EB] text-[#1E293B]"
                   />
                   <button
                     type="submit"
-                    className="text-xs px-3 py-1.5 bg-[#D95D39] text-white rounded-full font-medium hover:bg-[#C24E2B]"
+                    className="text-xs px-3 py-1.5 bg-[#2563EB] text-white rounded-full font-medium hover:bg-[#1D4ED8]"
                   >
                     Add
                   </button>
@@ -784,7 +780,7 @@ function DocumentsPageInner() {
               ) : (
                 <button
                   onClick={() => setPromptAdding(true)}
-                  className="text-xs text-[#D95D39] hover:underline font-semibold"
+                  className="text-xs text-[#2563EB] hover:underline font-semibold"
                 >
                   + Create a new category
                 </button>
@@ -795,14 +791,14 @@ function DocumentsPageInner() {
               <button
                 onClick={confirmCategory}
                 disabled={savingPrompt}
-                className="flex-1 py-2 bg-[#D95D39] text-white rounded-xl text-sm
-                  font-medium hover:bg-[#C24E2B] disabled:opacity-50 transition-colors shadow-sm"
+                className="flex-1 py-2 bg-[#2563EB] text-white rounded-xl text-sm
+                  font-medium hover:bg-[#1D4ED8] disabled:opacity-50 transition-colors shadow-sm"
               >
                 {savingPrompt ? "Saving…" : `Save to ${promptSelected}`}
               </button>
               <button
                 onClick={() => { setCategoryPrompt(null); setPromptAdding(false); }}
-                className="px-4 py-2 text-[#7C6E67] text-sm hover:text-[#2E2724] transition-colors"
+                className="px-4 py-2 text-[#64748B] text-sm hover:text-[#1E293B] transition-colors"
               >
                 {categoryPrompt.fromUpload ? "Keep suggestion" : "Skip"}
               </button>
@@ -842,31 +838,31 @@ function UploadJobCard({ job, onDismiss }: { job: UploadJob; onDismiss: () => vo
   return (
     <div
       className={`rounded-2xl border px-4 py-3.5 bg-white ${
-        failed ? "border-[#F5DFD6]" : done ? "border-[#E1EAD8]" : "border-[#E5DFD7]"
+        failed ? "border-[#CFE0FF]" : done ? "border-[#BBF7D0]" : "border-[#E6E8EE]"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#2E2724] truncate">{job.fileName}</p>
-          <p className={`text-xs mt-0.5 flex items-center gap-1.5 ${failed ? "text-[#D95D39]" : done ? "text-[#6E885B]" : "text-[#7C6E67]"}`}>
+          <p className="text-sm font-semibold text-[#1E293B] truncate">{job.fileName}</p>
+          <p className={`text-xs mt-0.5 flex items-center gap-1.5 ${failed ? "text-[#2563EB]" : done ? "text-[#15803D]" : "text-[#64748B]"}`}>
             {!failed && !done && <Spinner />}
             {done && <span>✓</span>}
             {headline}
           </p>
-          {failed && job.error && <p className="text-xs text-[#7C6E67] mt-1">{job.error}</p>}
-          {done && job.summary && <p className="text-xs text-[#7C6E67] mt-1">{job.summary}</p>}
+          {failed && job.error && <p className="text-xs text-[#64748B] mt-1">{job.error}</p>}
+          {done && job.summary && <p className="text-xs text-[#64748B] mt-1">{job.summary}</p>}
         </div>
         {(failed || done) && (
-          <button onClick={onDismiss} className="text-[#7C6E67]/50 hover:text-[#2E2724] text-sm" title="Dismiss">
+          <button onClick={onDismiss} className="text-[#64748B]/50 hover:text-[#1E293B] text-sm" title="Dismiss">
             ✕
           </button>
         )}
       </div>
 
       {job.stage === "uploading" && (
-        <div className="mt-2.5 h-1.5 rounded-full bg-[#F4EFEA] overflow-hidden">
+        <div className="mt-2.5 h-1.5 rounded-full bg-[#FFFFFF] overflow-hidden">
           <div
-            className="h-full bg-[#D95D39] rounded-full transition-[width] duration-200"
+            className="h-full bg-[#2563EB] rounded-full transition-[width] duration-200"
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -881,16 +877,16 @@ function UploadJobCard({ job, onDismiss }: { job: UploadJob; onDismiss: () => vo
                 <span
                   className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-colors ${
                     state === "done"
-                      ? "bg-[#F3F6F1] text-[#6E885B] border-[#E1EAD8]"
+                      ? "bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0]"
                       : state === "active"
-                      ? "bg-[#D95D39] text-white border-[#D95D39]"
-                      : "bg-white text-[#7C6E67]/50 border-[#E5DFD7]"
+                      ? "bg-[#2563EB] text-white border-[#2563EB]"
+                      : "bg-white text-[#64748B]/50 border-[#E6E8EE]"
                   }`}
                 >
                   {state === "done" ? "✓ " : ""}
                   {step.label}
                 </span>
-                {i < JOB_STEPS.length - 1 && <span className="text-[#E5DFD7] text-[10px]">—</span>}
+                {i < JOB_STEPS.length - 1 && <span className="w-3 h-px bg-[#E6E8EE]" />}
               </li>
             );
           })}

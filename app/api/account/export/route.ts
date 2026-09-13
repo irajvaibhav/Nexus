@@ -41,7 +41,7 @@ export async function POST() {
       account: { id: userId, email: authedUser.email },
       profile: profile || null,
       ...tables,
-      note: "Document files themselves are not included — download those individually from the Documents page. Search embeddings are omitted because they are derived data.",
+      note: "Document files are not included. Download those from the Documents page. Search embeddings are omitted because they are derived data.",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Export failed";

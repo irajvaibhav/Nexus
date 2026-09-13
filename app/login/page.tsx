@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase-browser";
-import { AuthShell, GoogleButton, OrDivider, inputClass } from "@/components/auth-shell";
+import { AuthShell, inputClass } from "@/components/auth-shell";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import Link from "next/link";
@@ -60,16 +60,10 @@ function LoginInner() {
   }
 
   return (
-    <AuthShell mode="signin">
-      <h2 className="text-2xl font-serif font-semibold tracking-tight text-[#1A1412]">Welcome back</h2>
-      <p className="text-sm text-[#7C6E67] mt-1 mb-6">Sign in to the account you already have.</p>
-
-      <GoogleButton mode="signin" />
-      <OrDivider />
-
+    <AuthShell mode="signin" openEmail={problem.kind !== "none" || Boolean(searchParams.get("email"))}>
       <form onSubmit={handleLogin} className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-[#7C6E67] mb-1">Email</label>
+          <label className="block text-xs font-semibold text-[#64748B] mb-1">Email</label>
           <input
             type="email"
             value={email}
@@ -82,7 +76,7 @@ function LoginInner() {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-[#7C6E67] mb-1">Password</label>
+          <label className="block text-xs font-semibold text-[#64748B] mb-1">Password</label>
           <input
             type="password"
             value={password}
@@ -95,14 +89,14 @@ function LoginInner() {
         </div>
 
         {problem.kind === "bad_credentials" && (
-          <div className="rounded-xl border border-[#F5DFD6] bg-[#FDF2EE] px-3.5 py-3 text-sm">
-            <p className="font-semibold text-[#D95D39]">That email and password don&apos;t match.</p>
-            <p className="text-[#7C6E67] text-xs mt-1">
+          <div className="rounded-xl border border-[#CFE0FF] bg-[#EAF2FF] px-3.5 py-3 text-sm">
+            <p className="font-semibold text-[#2563EB]">That email and password don&apos;t match.</p>
+            <p className="text-[#64748B] text-xs mt-1">
               Either the password is wrong, or there&apos;s no NEXUS account for{" "}
-              <span className="font-medium text-[#2E2724]">{email}</span> yet.{" "}
+              <span className="font-medium text-[#1E293B]">{email}</span> yet.{" "}
               <Link
                 href={`/signup?email=${encodeURIComponent(email)}`}
-                className="text-[#D95D39] font-semibold hover:underline"
+                className="text-[#2563EB] font-semibold hover:underline"
               >
                 New here? Create an account →
               </Link>
@@ -111,14 +105,14 @@ function LoginInner() {
         )}
 
         {problem.kind === "unconfirmed" && (
-          <div className="rounded-xl border border-[#FBEAC9] bg-[#FEF9EC] px-3.5 py-3 text-sm">
-            <p className="font-semibold text-[#B9832A]">Confirm your email first.</p>
-            <p className="text-[#7C6E67] text-xs mt-1">
+          <div className="rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-3.5 py-3 text-sm">
+            <p className="font-semibold text-[#B45309]">Confirm your email first.</p>
+            <p className="text-[#64748B] text-xs mt-1">
               We sent a confirmation link to {email}. Open it, then sign in.{" "}
               {resent ? (
-                <span className="text-[#6E885B] font-medium">Sent again ✓</span>
+                <span className="text-[#15803D] font-medium">Sent again ✓</span>
               ) : (
-                <button type="button" onClick={resendConfirmation} className="text-[#D95D39] font-semibold hover:underline">
+                <button type="button" onClick={resendConfirmation} className="text-[#2563EB] font-semibold hover:underline">
                   Resend the email
                 </button>
               )}
@@ -139,20 +133,13 @@ function LoginInner() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-xl
-            font-semibold text-sm disabled:opacity-50 transition-all shadow-sm hover:-translate-y-0.5
-            hover:shadow-lg hover:shadow-[#D95D39]/25 cursor-pointer"
+          className="w-full py-3 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-full
+            font-semibold text-sm disabled:opacity-50 transition-colors cursor-pointer"
         >
           {loading ? "Signing in…" : "Sign in"}
         </button>
       </form>
 
-      <p className="text-center text-sm text-[#7C6E67] mt-6">
-        New to NEXUS?{" "}
-        <Link href="/signup" className="text-[#D95D39] font-bold hover:underline">
-          Create an account
-        </Link>
-      </p>
     </AuthShell>
   );
 }

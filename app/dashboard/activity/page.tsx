@@ -87,9 +87,9 @@ export default function ActivityPage() {
 
   return (
     <div className="max-w-2xl animate-fade-in-up">
-      <h1 className="text-2xl font-serif font-semibold tracking-tight text-[#1A1412]">Activity</h1>
-      <p className="text-sm text-[#7C6E67] mt-1">
-        Everything NEXUS did and everything you approved — so nothing happens invisibly.
+      <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Activity</h1>
+      <p className="text-sm text-[#64748B] mt-1">
+        Everything NEXUS did and everything you approved.
       </p>
 
       <div className="mt-5 flex flex-wrap gap-1.5">
@@ -99,8 +99,8 @@ export default function ActivityPage() {
             onClick={() => setFilter(f.key)}
             className={`text-xs px-3.5 py-1.5 rounded-full font-medium border transition-colors ${
               filter === f.key
-                ? "bg-[#2E2724] text-white border-[#2E2724] shadow-sm"
-                : "bg-white text-[#7C6E67] border-[#E5DFD7] hover:border-[#2E2724] hover:text-[#2E2724]"
+                ? "bg-[#1E293B] text-white border-[#1E293B] shadow-sm"
+                : "bg-white text-[#64748B] border-[#E6E8EE] hover:border-[#1E293B] hover:text-[#1E293B]"
             }`}
           >
             {f.label}
@@ -110,10 +110,10 @@ export default function ActivityPage() {
 
       <div className="mt-5 space-y-6">
         {loading ? (
-          <p className="text-sm text-[#7C6E67]/60 text-center py-8">Loading activity...</p>
+          <p className="text-sm text-[#64748B]/60 text-center py-8">Loading activity...</p>
         ) : groups.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-[#E5DFD7] p-8 text-center">
-            <p className="text-sm text-[#7C6E67]/60">
+          <div className="bg-white rounded-2xl border border-[#E6E8EE] p-8 text-center">
+            <p className="text-sm text-[#64748B]/60">
               {filter === "all"
                 ? "No activity yet. Upload a document or ask NEXUS a question to get started."
                 : "Nothing here yet."}
@@ -122,28 +122,28 @@ export default function ActivityPage() {
         ) : (
           groups.map((group) => (
             <div key={group.label}>
-              <h2 className="text-[10px] font-semibold text-[#7C6E67]/60 font-mono uppercase tracking-wider mb-2">
+              <h2 className="text-[10px] font-semibold text-[#64748B]/60 font-mono uppercase tracking-wider mb-2">
                 {group.label}
               </h2>
-              <div className="bg-white rounded-2xl border border-[#E5DFD7] divide-y divide-[#E5DFD7]/50">
+              <div className="bg-white rounded-2xl border border-[#E6E8EE] divide-y divide-[#E6E8EE]/50">
                 {group.items.map((item) => {
                   const meta = ACTION_META[item.action] || FALLBACK_META;
                   return (
                     <div key={item.id} className="flex items-start gap-3 px-4 py-3.5">
                       <span className="text-base leading-none mt-0.5">{meta.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-[#2E2724]">
+                        <p className="text-sm text-[#1E293B]">
                           {item.details?.message || item.action}
                         </p>
                         <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
                           meta.actor === "NEXUS"
-                            ? "bg-[#FDF2EE] text-[#D95D39] border border-[#F5DFD6]"
-                            : "bg-[#F8F6F3] text-[#7C6E67] border border-[#ECE7E1]"
+                            ? "bg-[#EAF2FF] text-[#2563EB] border border-[#CFE0FF]"
+                            : "bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]"
                         }`}>
                           {meta.actor}
                         </span>
                       </div>
-                      <span className="text-xs text-[#7C6E67]/70 shrink-0">
+                      <span className="text-xs text-[#64748B]/70 shrink-0">
                         {timeLabel(item.created_at)}
                       </span>
                     </div>

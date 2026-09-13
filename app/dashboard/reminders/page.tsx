@@ -150,29 +150,29 @@ export default function RemindersPage() {
     <div className="max-w-3xl animate-fade-in-up">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-serif font-semibold tracking-tight text-[#1A1412]">Reminders</h1>
-          <p className="text-sm text-[#7C6E67] mt-1">
+          <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Reminders</h1>
+          <p className="text-sm text-[#64748B] mt-1">
             Expiry and renewal dates NEXUS found in your documents.
           </p>
         </div>
         <button
           onClick={buildPlan}
           disabled={planLoading}
-          className="text-sm px-4 py-2.5 bg-[#D95D39] text-white rounded-xl font-medium
-            hover:bg-[#C24E2B] disabled:opacity-50 transition-colors shadow-sm shrink-0"
+          className="text-sm px-4 py-2.5 bg-[#2563EB] text-white rounded-xl font-medium
+            hover:bg-[#1D4ED8] disabled:opacity-50 transition-colors shadow-sm shrink-0"
         >
           {planLoading ? "Reviewing your renewals..." : "Take care of my renewals"}
         </button>
       </div>
 
       {applyResult !== null && (
-        <div className="mt-4 rounded-2xl border border-[#E1EAD8] bg-[#F3F6F1] px-4 py-3 flex items-center justify-between">
-          <p className="text-sm text-[#4A5D3D]">
+        <div className="mt-4 rounded-2xl border border-[#BBF7D0] bg-[#F0FDF4] px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-[#166534]">
             Created {applyResult} task{applyResult === 1 ? "" : "s"} from your renewal plan.
           </p>
           <button
             onClick={() => router.push("/dashboard/tasks")}
-            className="text-xs font-semibold text-[#6E885B] hover:underline shrink-0"
+            className="text-xs font-semibold text-[#15803D] hover:underline shrink-0"
           >
             View tasks →
           </button>
@@ -189,11 +189,11 @@ export default function RemindersPage() {
         <TabButton label="All" active={tab === "all"} onClick={() => setTab("all")} />
       </div>
 
-      <div className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] divide-y divide-[#E5DFD7]/50">
+      <div className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] divide-y divide-[#E6E8EE]/50">
         {loading ? (
-          <p className="px-4 py-8 text-sm text-[#7C6E67]/60 text-center">Loading reminders...</p>
+          <p className="px-4 py-8 text-sm text-[#64748B]/60 text-center">Loading reminders...</p>
         ) : visible.length === 0 ? (
-          <p className="px-4 py-8 text-sm text-[#7C6E67]/60 text-center">
+          <p className="px-4 py-8 text-sm text-[#64748B]/60 text-center">
             {tab === "active"
               ? "No active reminders. NEXUS will surface expiry dates it finds in your documents here."
               : tab === "completed"
@@ -205,14 +205,14 @@ export default function RemindersPage() {
             const days = daysLeft(r.expiry_date);
             const isDone = r.status === "completed";
             return (
-              <div key={r.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-[#FCFAF7] transition-colors">
+              <div key={r.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-[#F6F7F9] transition-colors">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${isDone ? "bg-[#6E885B]" : "bg-[#E5DFD7]"}`} />
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${isDone ? "bg-[#15803D]" : "bg-[#E6E8EE]"}`} />
                   <div className="min-w-0">
-                    <p className={`text-sm font-semibold truncate ${isDone ? "text-[#7C6E67]/50 line-through" : "text-[#2E2724]"}`}>
+                    <p className={`text-sm font-semibold truncate ${isDone ? "text-[#64748B]/50 line-through" : "text-[#1E293B]"}`}>
                       {r.title}
                     </p>
-                    <p className="text-xs text-[#7C6E67] truncate">
+                    <p className="text-xs text-[#64748B] truncate">
                       {r.documents?.file_name && <>{r.documents.file_name} · </>}
                       Expires on {new Date(r.expiry_date).toLocaleDateString()}
                     </p>
@@ -226,21 +226,21 @@ export default function RemindersPage() {
                   )}
                   <button
                     onClick={() => router.push(`/dashboard/ask?q=${encodeURIComponent(`What do I need to know about my ${r.title}?`)}`)}
-                    className="text-xs text-[#D95D39] hover:underline px-1 font-semibold"
+                    className="text-xs text-[#2563EB] hover:underline px-1 font-semibold"
                   >
                     Ask
                   </button>
                   {isDone ? (
                     <button
                       onClick={() => setStatus(r.id, "active")}
-                      className="text-xs px-2.5 py-1 rounded-xl border border-[#E5DFD7] text-[#7C6E67] hover:border-[#D95D39] hover:text-[#D95D39] transition-colors bg-white"
+                      className="text-xs px-2.5 py-1 rounded-xl border border-[#E6E8EE] text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors bg-white"
                     >
                       Reopen
                     </button>
                   ) : (
                     <button
                       onClick={() => setStatus(r.id, "completed")}
-                      className="text-xs px-2.5 py-1 rounded-xl bg-[#6E885B] text-white hover:bg-[#5C744B] transition-colors shadow-sm"
+                      className="text-xs px-2.5 py-1 rounded-xl bg-[#15803D] text-white hover:bg-[#166534] transition-colors shadow-sm"
                     >
                       Mark done
                     </button>
@@ -255,25 +255,25 @@ export default function RemindersPage() {
       {planItems !== null && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl max-h-[85vh] flex flex-col">
-            <h3 className="text-lg font-serif font-semibold text-[#1A1412]">
+            <h3 className="text-lg font-semibold text-[#0F172A]">
               Your renewal plan
             </h3>
 
             {planItems.length === 0 ? (
               <>
-                <p className="text-sm text-[#7C6E67] mt-2">
-                  You&apos;re all caught up — nothing urgent in the next 45 days.
+                <p className="text-sm text-[#64748B] mt-2">
+                  All caught up. Nothing urgent in the next 45 days.
                 </p>
                 <button
                   onClick={() => setPlanItems(null)}
-                  className="mt-5 w-full py-2.5 border border-[#E5DFD7] rounded-xl text-sm font-semibold text-[#2E2724] hover:bg-[#FCFAF7] transition-colors"
+                  className="mt-5 w-full py-2.5 border border-[#E6E8EE] rounded-xl text-sm font-semibold text-[#1E293B] hover:bg-[#F6F7F9] transition-colors"
                 >
                   Close
                 </button>
               </>
             ) : (
               <>
-                <p className="text-sm text-[#7C6E67] mt-1">
+                <p className="text-sm text-[#64748B] mt-1">
                   NEXUS reviewed your upcoming obligations and drafted this plan. Uncheck anything
                   you don&apos;t want, then approve to turn the rest into tasks. Nothing is created until you approve.
                 </p>
@@ -282,18 +282,18 @@ export default function RemindersPage() {
                   {planItems.map((p) => (
                     <label
                       key={p.deadline_id}
-                      className="flex items-start gap-3 p-3 rounded-xl border border-[#E5DFD7] cursor-pointer hover:border-[#D95D39]/50 transition-colors"
+                      className="flex items-start gap-3 p-3 rounded-xl border border-[#E6E8EE] cursor-pointer hover:border-[#2563EB]/50 transition-colors"
                     >
                       <input
                         type="checkbox"
                         checked={selected.has(p.deadline_id)}
                         onChange={() => toggleSelected(p.deadline_id)}
-                        className="mt-0.5 accent-[#D95D39]"
+                        className="mt-0.5 accent-[#2563EB]"
                       />
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[#2E2724]">{p.task_title}</p>
-                        <p className="text-xs text-[#7C6E67] mt-1">{p.reasoning}</p>
-                        <p className="text-[11px] text-[#7C6E67]/70 mt-1">
+                        <p className="text-sm font-semibold text-[#1E293B]">{p.task_title}</p>
+                        <p className="text-xs text-[#64748B] mt-1">{p.reasoning}</p>
+                        <p className="text-[11px] text-[#64748B]/70 mt-1">
                           For: {p.deadline_title}
                           {p.suggested_date && <> · Suggested: {new Date(p.suggested_date).toLocaleDateString()}</>}
                         </p>
@@ -306,14 +306,14 @@ export default function RemindersPage() {
                   <button
                     onClick={approvePlan}
                     disabled={applying || selected.size === 0}
-                    className="flex-1 py-2.5 bg-[#D95D39] text-white rounded-xl text-sm font-semibold
-                      hover:bg-[#C24E2B] disabled:opacity-40 transition-colors shadow-sm"
+                    className="flex-1 py-2.5 bg-[#2563EB] text-white rounded-xl text-sm font-semibold
+                      hover:bg-[#1D4ED8] disabled:opacity-40 transition-colors shadow-sm"
                   >
                     {applying ? "Creating tasks..." : `Approve ${selected.size} task${selected.size === 1 ? "" : "s"}`}
                   </button>
                   <button
                     onClick={() => setPlanItems(null)}
-                    className="px-4 py-2.5 text-[#7C6E67] text-sm font-medium hover:text-[#2E2724] transition-colors"
+                    className="px-4 py-2.5 text-[#64748B] text-sm font-medium hover:text-[#1E293B] transition-colors"
                   >
                     Cancel
                   </button>
@@ -333,8 +333,8 @@ function TabButton({ label, active, onClick }: { label: string; active: boolean;
       onClick={onClick}
       className={`text-xs px-3.5 py-1.5 rounded-full font-medium border transition-colors ${
         active
-          ? "bg-[#D95D39] text-white border-[#D95D39] shadow-sm"
-          : "bg-white text-[#7C6E67] border-[#E5DFD7] hover:border-[#D95D39] hover:text-[#2E2724]"
+          ? "bg-[#2563EB] text-white border-[#2563EB] shadow-sm"
+          : "bg-white text-[#64748B] border-[#E6E8EE] hover:border-[#2563EB] hover:text-[#1E293B]"
       }`}
     >
       {label}

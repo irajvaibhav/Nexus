@@ -193,7 +193,7 @@ export async function createCalendarEvent(
   event: { title: string; description?: string; dateISO: string }
 ): Promise<CreatedEvent> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(event.dateISO)) {
-    throw new Error(`Invalid date "${event.dateISO}" — expected YYYY-MM-DD`);
+    throw new Error(`Invalid date "${event.dateISO}", expected YYYY-MM-DD`);
   }
 
   // All-day events use an exclusive end date. With start == end Google

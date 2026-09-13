@@ -4,9 +4,9 @@ export function daysLeft(dateStr: string): number {
 }
 
 export function badgeColorFor(days: number): string {
-  if (days <= 7) return "bg-[#FDF2EE] text-[#D95D39] border border-[#F5DFD6]";
-  if (days <= 30) return "bg-[#FEF9EC] text-[#D48C2B] border border-[#FBEAC9]";
-  return "bg-[#F3F6F1] text-[#6E885B] border border-[#E1EAD8]";
+  if (days <= 7) return "bg-[#EAF2FF] text-[#2563EB] border border-[#CFE0FF]";
+  if (days <= 30) return "bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]";
+  return "bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]";
 }
 
 export function daysLabel(days: number): string {

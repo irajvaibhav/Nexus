@@ -101,8 +101,8 @@ function SettingsPageInner() {
     }
   }
 
-  // Proves the whole chain — token, permission level, Google's API, the right
-  // calendar — with something the user can open and see.
+  // Proves the whole chain (token, permission level, Google's API, the right
+  // calendar) with something the user can open and see.
   async function sendTestEvent() {
     setTestState({ phase: "sending" });
     const tomorrow = new Date();
@@ -113,7 +113,7 @@ function SettingsPageInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: "NEXUS test event — safe to delete",
+          title: "NEXUS test event (safe to delete)",
           description: "NEXUS created this to confirm your Google Calendar connection works. Delete it whenever you like.",
           dateISO,
         }),
@@ -276,88 +276,88 @@ function SettingsPageInner() {
   }
   return (
     <div className="max-w-2xl animate-fade-in-up">
-      <h1 className="text-2xl font-serif font-semibold tracking-tight text-[#1A1412]">Settings</h1>
-      <p className="text-sm text-[#7C6E67] mt-1">
-        Manage your profile, security, and data.
+      <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Settings</h1>
+      <p className="text-sm text-[#64748B] mt-1">
+        Profile, permissions, integrations and data.
       </p>
 
-      <section className="mt-6 bg-white rounded-2xl border border-[#E5DFD7] p-6">
-        <h2 className="text-base font-serif font-semibold text-[#1A1412]">Profile</h2>
+      <section className="mt-6 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+        <h2 className="text-base font-semibold text-[#0F172A]">Profile</h2>
         <form onSubmit={saveName} className="mt-4 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#7C6E67] mb-1">Full name</label>
+            <label className="block text-xs font-semibold text-[#64748B] mb-1">Full name</label>
             <input
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full px-3 py-2 border border-[#E5DFD7] rounded-xl text-sm
-                focus:outline-none focus:ring-2 focus:ring-[#D95D39] focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
+              className="w-full px-3 py-2 border border-[#E6E8EE] rounded-xl text-sm
+                focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent text-[#1E293B] placeholder-[#64748B]/50"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[#7C6E67] mb-1">Email</label>
+            <label className="block text-xs font-semibold text-[#64748B] mb-1">Email</label>
             <input
               value={email}
               disabled
-              className="w-full px-3 py-2 border border-[#E5DFD7] rounded-xl text-sm bg-[#FCFAF7] text-[#7C6E67]/60"
+              className="w-full px-3 py-2 border border-[#E6E8EE] rounded-xl text-sm bg-[#F6F7F9] text-[#64748B]/60"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[#7C6E67] mb-1">City</label>
+            <label className="block text-xs font-semibold text-[#64748B] mb-1">City</label>
             <div className="flex gap-2">
               <input
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 placeholder="e.g. New Delhi"
-                className="flex-1 px-3 py-2 border border-[#E5DFD7] rounded-xl text-sm
-                  focus:outline-none focus:ring-2 focus:ring-[#D95D39] focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
+                className="flex-1 px-3 py-2 border border-[#E6E8EE] rounded-xl text-sm
+                  focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent text-[#1E293B] placeholder-[#64748B]/50"
               />
               <button
                 type="button"
                 onClick={useMyLocation}
                 disabled={locating}
-                className="text-xs px-3 py-2 border border-[#E5DFD7] rounded-xl font-semibold text-[#2E2724]
-                  hover:border-[#D95D39] transition-colors bg-white disabled:opacity-50 whitespace-nowrap"
+                className="text-xs px-3 py-2 border border-[#E6E8EE] rounded-xl font-semibold text-[#1E293B]
+                  hover:border-[#2563EB] transition-colors bg-white disabled:opacity-50 whitespace-nowrap"
               >
                 {locating ? "Locating…" : "📍 Use my location"}
               </button>
             </div>
-            <p className="text-[11px] text-[#7C6E67]/70 mt-1">
+            <p className="text-[11px] text-[#64748B]/70 mt-1">
               {locateMessage || "Used for the local weather on Home and when NEXUS suggests the best day to handle a renewal."}
             </p>
           </div>
           <button
             type="submit"
             disabled={nameSaving}
-            className="text-sm px-4 py-2 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-xl font-medium
-              transition-colors shadow-sm cursor-pointer"
+            className="text-sm px-4 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl font-medium
+              transition-colors cursor-pointer"
           >
             {nameSaving ? "Saving..." : nameSaved ? "Saved ✓" : "Save changes"}
           </button>
         </form>
       </section>
 
-      <section className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
-        <h2 className="text-base font-serif font-semibold text-[#1A1412]">Security</h2>
+      <section className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+        <h2 className="text-base font-semibold text-[#0F172A]">Security</h2>
         <form onSubmit={savePassword} className="mt-4 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#7C6E67] mb-1">New password</label>
+            <label className="block text-xs font-semibold text-[#64748B] mb-1">New password</label>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Min 6 characters"
-              className="w-full px-3 py-2 border border-[#E5DFD7] rounded-xl text-sm
-                focus:outline-none focus:ring-2 focus:ring-[#D95D39] focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
+              className="w-full px-3 py-2 border border-[#E6E8EE] rounded-xl text-sm
+                focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent text-[#1E293B] placeholder-[#64748B]/50"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[#7C6E67] mb-1">Confirm new password</label>
+            <label className="block text-xs font-semibold text-[#64748B] mb-1">Confirm new password</label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-[#E5DFD7] rounded-xl text-sm
-                focus:outline-none focus:ring-2 focus:ring-[#D95D39] focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
+              className="w-full px-3 py-2 border border-[#E6E8EE] rounded-xl text-sm
+                focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent text-[#1E293B] placeholder-[#64748B]/50"
             />
           </div>
           {passwordError && <p className="text-sm text-red-600 font-medium">{passwordError}</p>}
@@ -365,20 +365,20 @@ function SettingsPageInner() {
           <button
             type="submit"
             disabled={passwordSaving || !newPassword}
-            className="text-sm px-4 py-2 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-xl font-medium
-              transition-colors shadow-sm cursor-pointer"
+            className="text-sm px-4 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl font-medium
+              transition-colors cursor-pointer"
           >
             {passwordSaving ? "Updating..." : "Update password"}
           </button>
         </form>
       </section>
 
-      <section className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
+      <section className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-serif font-semibold text-[#1A1412]">AI permissions</h2>
-          {permissionSaved && <span className="text-xs font-semibold text-[#6E885B]">Saved ✓</span>}
+          <h2 className="text-base font-semibold text-[#0F172A]">AI permissions</h2>
+          {permissionSaved && <span className="text-xs font-semibold text-[#15803D]">Saved ✓</span>}
         </div>
-        <p className="text-xs text-[#7C6E67] mt-1">
+        <p className="text-xs text-[#64748B] mt-1">
           How far NEXUS can go on your behalf. Each level unlocks the one above it, and NEXUS always
           shows you what it plans to do and waits for your approval before acting.
         </p>
@@ -387,14 +387,14 @@ function SettingsPageInner() {
             { value: "read", label: "Read", desc: "Read and organize your documents. NEXUS won't suggest or create anything." },
             { value: "recommend", label: "Recommend", desc: "Also draft renewal plans and suggest what to handle next." },
             { value: "prepare", label: "Prepare", desc: "Also turn a plan you approve into tasks and reminders inside NEXUS." },
-            { value: "execute", label: "Execute", desc: "Also write to connected services — like adding a renewal to your Google Calendar — once you approve it." },
+            { value: "execute", label: "Execute", desc: "Also write to connected services, like your Google Calendar, once you approve." },
           ].map((opt) => (
             <label
               key={opt.value}
               className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
                 agentPermission === opt.value
-                  ? "border-[#D95D39] bg-[#FDF2EE]"
-                  : "border-[#E5DFD7] hover:border-[#D95D39]/40"
+                  ? "border-[#2563EB] bg-[#EAF2FF]"
+                  : "border-[#E6E8EE] hover:border-[#2563EB]/40"
               }`}
             >
               <input
@@ -402,20 +402,20 @@ function SettingsPageInner() {
                 name="agent_permission"
                 checked={agentPermission === opt.value}
                 onChange={() => savePermission(opt.value)}
-                className="mt-0.5 accent-[#D95D39]"
+                className="mt-0.5 accent-[#2563EB]"
               />
               <div>
-                <p className="text-sm font-semibold text-[#2E2724]">{opt.label}</p>
-                <p className="text-xs text-[#7C6E67] mt-0.5">{opt.desc}</p>
+                <p className="text-sm font-semibold text-[#1E293B]">{opt.label}</p>
+                <p className="text-xs text-[#64748B] mt-0.5">{opt.desc}</p>
               </div>
             </label>
           ))}
         </div>
       </section>
 
-      <section className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
-        <h2 className="text-base font-serif font-semibold text-[#1A1412]">What NEXUS can access</h2>
-        <p className="text-xs text-[#7C6E67] mt-1">
+      <section className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+        <h2 className="text-base font-semibold text-[#0F172A]">What NEXUS can access</h2>
+        <p className="text-xs text-[#64748B] mt-1">
           Everything NEXUS stores about you, and what each part is used for.
         </p>
         <ul className="mt-4 space-y-3">
@@ -426,7 +426,7 @@ function SettingsPageInner() {
             },
             {
               what: "Details extracted from them",
-              why: "Names, numbers, dates and expiry dates found in your documents — used to answer your questions and fill forms.",
+              why: "Names, numbers and dates from your documents. Used to answer questions and fill forms.",
             },
             {
               what: "A searchable index of each document",
@@ -442,40 +442,39 @@ function SettingsPageInner() {
             },
           ].map((item) => (
             <li key={item.what} className="flex gap-3">
-              <span className="text-[#6E885B] text-sm mt-0.5 shrink-0">✓</span>
+              <span className="text-[#15803D] text-sm mt-0.5 shrink-0">✓</span>
               <div>
-                <p className="text-sm font-semibold text-[#2E2724]">{item.what}</p>
-                <p className="text-xs text-[#7C6E67] mt-0.5">{item.why}</p>
+                <p className="text-sm font-semibold text-[#1E293B]">{item.what}</p>
+                <p className="text-xs text-[#64748B] mt-0.5">{item.why}</p>
               </div>
             </li>
           ))}
         </ul>
-        <p className="text-xs text-[#7C6E67]/80 mt-4 pt-4 border-t border-[#E5DFD7]/60">
+        <p className="text-xs text-[#64748B]/80 mt-4 pt-4 border-t border-[#E6E8EE]/60">
           NEXUS never shares your documents with anyone. Deleting a document removes its extracted
           details and search index too.
         </p>
       </section>
 
-      <section className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
-        <h2 className="text-base font-serif font-semibold text-[#1A1412]">Your data</h2>
-        <p className="text-xs text-[#7C6E67] mt-1">
-          Download everything NEXUS has extracted and recorded — your documents&apos; details,
-          reminders, tasks, chat history and activity log — as a single JSON file.
+      <section className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+        <h2 className="text-base font-semibold text-[#0F172A]">Your data</h2>
+        <p className="text-xs text-[#64748B] mt-1">
+          Download everything NEXUS holds about you as one JSON file.
         </p>
         {exportError && <p className="mt-3 text-sm text-red-600 font-medium">{exportError}</p>}
         <button
           onClick={exportData}
           disabled={exporting}
-          className="mt-3 text-sm px-4 py-2 border border-[#E5DFD7] rounded-xl text-[#2E2724]
-            hover:bg-[#FAF8F5] transition-colors bg-white font-semibold cursor-pointer disabled:opacity-50"
+          className="mt-3 text-sm px-4 py-2 border border-[#E6E8EE] rounded-xl text-[#1E293B]
+            hover:bg-[#F8FAFC] transition-colors bg-white font-semibold cursor-pointer disabled:opacity-50"
         >
           {exporting ? "Preparing your data..." : "Export my data"}
         </button>
       </section>
 
-      <section className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
-        <h2 className="text-base font-serif font-semibold text-[#1A1412]">Google Calendar</h2>
-        <p className="text-xs text-[#7C6E67] mt-1">
+      <section className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+        <h2 className="text-base font-semibold text-[#0F172A]">Google Calendar</h2>
+        <p className="text-xs text-[#64748B] mt-1">
           Connect your calendar so NEXUS can check you&apos;re free before suggesting a day, and add
           renewal tasks directly to your calendar.
         </p>
@@ -494,7 +493,7 @@ function SettingsPageInner() {
         )}
 
         {calendarLoading ? (
-          <p className="mt-3 text-xs text-[#7C6E67]/60 flex items-center gap-2">
+          <p className="mt-3 text-xs text-[#64748B]/60 flex items-center gap-2">
             <span className="inline-block w-3 h-3 rounded-full border-[1.5px] border-current border-t-transparent animate-spin" />
             Checking with Google…
           </p>
@@ -504,52 +503,52 @@ function SettingsPageInner() {
               <span
                 className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
                   calendarStatus.healthy
-                    ? "bg-[#F3F6F1] text-[#6E885B]"
-                    : "bg-[#FEF9EC] text-[#D48C2B]"
+                    ? "bg-[#F0FDF4] text-[#15803D]"
+                    : "bg-[#FFFBEB] text-[#D97706]"
                 }`}
               >
                 {calendarStatus.healthy ? "Connected and working" : "Connected, but not responding"}
               </span>
               {calendarStatus.email && (
-                <span className="text-xs text-[#7C6E67]">
-                  as <span className="font-semibold text-[#2E2724]">{calendarStatus.email}</span>
+                <span className="text-xs text-[#64748B]">
+                  as <span className="font-semibold text-[#1E293B]">{calendarStatus.email}</span>
                 </span>
               )}
             </div>
 
             {!calendarStatus.healthy && calendarStatus.problem && (
-              <p className="text-xs text-[#D48C2B]">{calendarStatus.problem}</p>
+              <p className="text-xs text-[#D97706]">{calendarStatus.problem}</p>
             )}
 
             {calendarStatus.healthy && !calendarStatus.email && (
-              <p className="text-xs text-[#7C6E67]">
-                Connected before NEXUS asked which account — reconnect once to show the account name.
+              <p className="text-xs text-[#64748B]">
+                Reconnect once to show which account this is.
               </p>
             )}
 
-            <div className="rounded-xl bg-[#FCFAF7] border border-[#E5DFD7] p-3.5">
-              <p className="text-xs font-semibold text-[#2E2724]">Check it end-to-end</p>
-              <p className="text-[11px] text-[#7C6E67] mt-0.5">
+            <div className="rounded-xl bg-[#F6F7F9] border border-[#E6E8EE] p-3.5">
+              <p className="text-xs font-semibold text-[#1E293B]">Check it end-to-end</p>
+              <p className="text-[11px] text-[#64748B] mt-0.5">
                 NEXUS adds an all-day event for tomorrow to this account&apos;s main calendar. If it shows
                 up there, everything is working.{" "}
                 {agentPermission !== "execute" && (
-                  <span className="text-[#D48C2B]">Needs the &ldquo;Execute&rdquo; permission above.</span>
+                  <span className="text-[#D97706]">Needs the &ldquo;Execute&rdquo; permission above.</span>
                 )}
               </p>
               <div className="mt-2.5 flex items-center gap-3 flex-wrap">
                 <button
                   onClick={sendTestEvent}
                   disabled={testState.phase === "sending" || agentPermission !== "execute"}
-                  className="text-xs px-3 py-1.5 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-lg font-semibold
+                  className="text-xs px-3 py-1.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg font-semibold
                     transition-colors disabled:opacity-40"
                 >
                   {testState.phase === "sending" ? "Adding…" : "Add a test event"}
                 </button>
                 {testState.phase === "sent" && (
-                  <span className="text-xs text-[#6E885B] font-medium">
+                  <span className="text-xs text-[#15803D] font-medium">
                     Added ✓{" "}
                     {testState.link && (
-                      <a href={testState.link} target="_blank" rel="noreferrer" className="text-[#D95D39] hover:underline font-semibold">
+                      <a href={testState.link} target="_blank" rel="noreferrer" className="text-[#2563EB] hover:underline font-semibold">
                         Open it in Google Calendar →
                       </a>
                     )}
@@ -565,14 +564,14 @@ function SettingsPageInner() {
               <button
                 onClick={disconnectCalendar}
                 disabled={disconnecting}
-                className="text-sm px-4 py-2 border border-[#E5DFD7] rounded-xl text-[#2E2724]
-                  hover:bg-[#FAF8F5] transition-colors bg-white font-semibold cursor-pointer disabled:opacity-50"
+                className="text-sm px-4 py-2 border border-[#E6E8EE] rounded-xl text-[#1E293B]
+                  hover:bg-[#F8FAFC] transition-colors bg-white font-semibold cursor-pointer disabled:opacity-50"
               >
                 {disconnecting ? "Disconnecting…" : "Disconnect"}
               </button>
               <a
                 href="/api/auth/google"
-                className="text-sm px-4 py-2 text-[#7C6E67] hover:text-[#2E2724] transition-colors font-medium"
+                className="text-sm px-4 py-2 text-[#64748B] hover:text-[#1E293B] transition-colors font-medium"
               >
                 Reconnect
               </a>
@@ -581,16 +580,16 @@ function SettingsPageInner() {
         ) : (
           <div className="mt-3">
             {calendarStatus?.problem && (
-              <p className="mb-2 text-xs text-[#D48C2B]">{calendarStatus.problem}</p>
+              <p className="mb-2 text-xs text-[#D97706]">{calendarStatus.problem}</p>
             )}
             <a
               href="/api/auth/google"
-              className="inline-block text-sm px-4 py-2 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-xl font-medium
+              className="inline-block text-sm px-4 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl font-medium
                 transition-colors shadow-sm"
             >
               Connect Google Calendar
             </a>
-            <p className="text-[11px] text-[#7C6E67]/70 mt-2">
+            <p className="text-[11px] text-[#64748B]/70 mt-2">
               Google will ask for permission to see when you&apos;re busy and to add events. NEXUS never
               reads the contents of your existing events.
             </p>
@@ -598,43 +597,43 @@ function SettingsPageInner() {
         )}
       </section>
 
-      <section className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
-        <h2 className="text-base font-serif font-semibold text-[#1A1412]">Session</h2>
-        <p className="text-xs text-[#7C6E67] mt-1">Sign out of NEXUS on this device.</p>
+      <section className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+        <h2 className="text-base font-semibold text-[#0F172A]">Session</h2>
+        <p className="text-xs text-[#64748B] mt-1">Sign out of NEXUS on this device.</p>
         <button
           onClick={handleLogout}
-          className="mt-3 text-sm px-4 py-2 border border-[#E5DFD7] rounded-xl text-[#2E2724]
-            hover:bg-[#FAF8F5] transition-colors bg-white font-semibold cursor-pointer"
+          className="mt-3 text-sm px-4 py-2 border border-[#E6E8EE] rounded-xl text-[#1E293B]
+            hover:bg-[#F8FAFC] transition-colors bg-white font-semibold cursor-pointer"
         >
           Log out
         </button>
       </section>
 
-      <section className="mt-4 bg-[#FDF2EE]/30 rounded-2xl border border-[#F5DFD6] p-6">
-        <h2 className="text-base font-serif font-semibold text-[#D95D39]">Danger zone</h2>
-        <p className="text-xs text-[#7C6E67] mt-1">
-          Permanently delete your account and everything in it — documents, extracted data,
+      <section className="mt-4 bg-[#EAF2FF]/30 rounded-2xl border border-[#CFE0FF] p-6">
+        <h2 className="text-base font-semibold text-[#2563EB]">Danger zone</h2>
+        <p className="text-xs text-[#64748B] mt-1">
+          Permanently delete your account and everything in it: documents, extracted data,
           reminders, chat history, and activity log. This cannot be undone.
         </p>
 
         {!showDeleteConfirm ? (
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="mt-3 text-sm px-4 py-2 border border-[#F5DFD6] text-[#D95D39] rounded-xl
-              hover:bg-[#FDF2EE] transition-colors bg-white font-semibold cursor-pointer"
+            className="mt-3 text-sm px-4 py-2 border border-[#CFE0FF] text-[#2563EB] rounded-xl
+              hover:bg-[#EAF2FF] transition-colors bg-white font-semibold cursor-pointer"
           >
             Delete my account
           </button>
         ) : (
           <div className="mt-3 space-y-2">
-            <p className="text-xs text-[#7C6E67]">
-              Type <span className="font-mono font-bold text-[#D95D39]">DELETE</span> to confirm.
+            <p className="text-xs text-[#64748B]">
+              Type <span className="font-mono font-bold text-[#2563EB]">DELETE</span> to confirm.
             </p>
             <input
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
-              className="w-full px-3 py-2 border border-[#F5DFD6] bg-white rounded-xl text-sm
-                focus:outline-none focus:ring-2 focus:ring-[#D95D39] text-[#2E2724]"
+              className="w-full px-3 py-2 border border-[#CFE0FF] bg-white rounded-xl text-sm
+                focus:outline-none focus:ring-2 focus:ring-[#2563EB] text-[#1E293B]"
               placeholder="DELETE"
             />
             {deleteError && <p className="text-sm text-red-600 font-semibold">{deleteError}</p>}
@@ -642,14 +641,14 @@ function SettingsPageInner() {
               <button
                 onClick={handleDelete}
                 disabled={deleteConfirmText !== "DELETE" || deleting}
-                className="text-sm px-4 py-2 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-xl font-medium
-                  hover:bg-[#C24E2B] disabled:opacity-40 transition-colors shadow-sm cursor-pointer"
+                className="text-sm px-4 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl font-medium
+                  hover:bg-[#1D4ED8] disabled:opacity-40 transition-colors cursor-pointer"
               >
                 {deleting ? "Deleting..." : "Permanently delete everything"}
               </button>
               <button
                 onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); setDeleteError(""); }}
-                className="text-sm px-4 py-2 text-[#7C6E67] hover:text-[#2E2724] transition-colors"
+                className="text-sm px-4 py-2 text-[#64748B] hover:text-[#1E293B] transition-colors"
               >
                 Cancel
               </button>

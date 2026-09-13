@@ -113,7 +113,7 @@ function AskNexus() {
       setVoiceBlockedReason(
         window.isSecureContext
           ? "This browser doesn't support voice input. Chrome, Edge or Safari do."
-          : "Voice input only works over https or on localhost — not over a plain network address."
+          : "Voice input only works over https or on localhost, not over a plain network address."
       );
       return;
     }
@@ -138,6 +138,18 @@ function AskNexus() {
 
     recognitionRef.current = recognition;
     setVoiceSupported(true);
+
+    // Arriving via the "Voice" button on the floating bar: start listening
+    // straight away instead of asking for a second tap.
+    if (searchParams.get("voice") === "1") {
+      try {
+        recognition.start();
+        setListening(true);
+      } catch {
+        // Browser refused to start without a gesture; the mic button still works.
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -259,22 +271,16 @@ function AskNexus() {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-120px)] animate-fade-in-up">
+    <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-64px)] animate-fade-in-up">
       <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-serif font-semibold tracking-tight text-[#1A1412]">Ask NEXUS</h1>
-          <p className="text-sm text-[#7C6E67]">
-            Bol do, type karo, ya photo bhejo — NEXUS dekh lega.
-          </p>
-        </div>
+        <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Ask NEXUS</h1>
         {messages.length > 0 && (
           <button
             onClick={clearChat}
-            className="text-xs text-[#7C6E67] hover:text-red-500 px-3 py-1.5
-              border border-[#E5DFD7] rounded-xl hover:border-red-300
-              transition-colors bg-white font-medium"
+            className="text-xs text-[#64748B] hover:text-[#0F172A] px-3 py-1.5
+              border border-[#E6E8EE] rounded-full transition-colors bg-white font-medium"
           >
-            Clear chat
+            Clear
           </button>
         )}
       </div>
@@ -282,25 +288,22 @@ function AskNexus() {
       <div className="flex-1 overflow-y-auto space-y-4 pb-4">
         {loadingHistory ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-[#7C6E67]/60">Loading chat history...</p>
+            <p className="text-sm text-[#64748B]/60">Loading chat history...</p>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="text-5xl mb-4">💬</div>
-            <h2 className="text-xl font-serif font-semibold text-[#1A1412]">
-              Hi! I&apos;m NEXUS
-            </h2>
-            <p className="text-sm text-[#7C6E67] mt-1.5 max-w-sm">
-              Ask me anything about your documents, or send a photo of a form, notice or letter
-              and I&apos;ll tell you what it needs.
+            <div className="w-14 h-14 rounded-2xl bg-[#0F172A] text-white flex items-center justify-center text-2xl mb-4">✦</div>
+            <h2 className="text-xl font-semibold text-[#0F172A]">What do you want to know?</h2>
+            <p className="text-sm text-[#64748B] mt-1.5 max-w-sm">
+              Answers come from your documents, with the source shown. You can also send a photo.
             </p>
             <div className="mt-6 flex flex-wrap gap-2 justify-center">
               {quickQuestions.map((q) => (
                 <button
                   key={q}
                   onClick={() => setInput(q)}
-                  className="px-3 py-2 bg-white border border-[#E5DFD7] rounded-xl
-                    text-sm text-[#7C6E67] hover:border-[#D95D39] hover:bg-[#FDF2EE] hover:text-[#D95D39]
+                  className="px-3.5 py-2 bg-white border border-[#E6E8EE] rounded-full
+                    text-sm text-[#1E293B] hover:border-[#2563EB] hover:text-[#2563EB]
                     transition-all"
                 >
                   {q}
@@ -313,13 +316,19 @@ function AskNexus() {
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
           >
+            {msg.role === "assistant" && (
+              <div className="flex items-center gap-2 mb-1.5 ml-1">
+                <span className="w-6 h-6 rounded-full bg-[#0F172A] text-white flex items-center justify-center text-[10px]">✦</span>
+                <span className="text-[11px] font-semibold tracking-wider text-[#0F172A]">NEXUS</span>
+              </div>
+            )}
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3.5 shadow-sm ${
+              className={`max-w-[85%] rounded-2xl px-4 py-3.5 ${
                 msg.role === "user"
-                  ? "bg-[#D95D39] text-white rounded-tr-none"
-                  : "bg-white border border-[#E5DFD7] text-[#2E2724] rounded-tl-none"
+                  ? "bg-[#2563EB] text-white rounded-br-md"
+                  : "bg-white border border-[#E6E8EE] text-[#1E293B] shadow-sm"
               }`}
             >
               {msg.imageUrl && (
@@ -338,38 +347,30 @@ function AskNexus() {
               )}
 
               {msg.sources && msg.sources.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-[#E5DFD7]/50 space-y-1">
-                  <p className="text-[10px] font-semibold text-[#7C6E67]/60 font-mono uppercase tracking-wider">
+                <div className="mt-3 pt-3 border-t border-[#E6E8EE]/70">
+                  <p className="text-[10px] font-semibold text-[#64748B] uppercase tracking-wider mb-1.5">
                     Sources
                   </p>
+                  <div className="flex flex-wrap gap-1.5">
                   {msg.sources.map((s, j) => {
+                    const chip = "inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-[#F1F5F9] text-[#1E293B]";
                     const row = (
                       <>
                         <span>📄</span>
-                        <span className="underline-offset-2 group-hover:underline">{s.file_name}</span>
-                        <span className="text-[#E5DFD7]">•</span>
-                        <span>Page {s.page_number}</span>
-                        <span className="ml-auto text-[10px] bg-[#F3F6F1] text-[#6E885B] border border-[#E1EAD8]
-                          px-1.5 py-0.5 rounded-full">
-                          {s.similarity}% match
-                        </span>
+                        <span>{s.file_name}</span>
+                        <span className="text-[#94A3B8]">p.{s.page_number}</span>
                       </>
                     );
 
                     return s.document_id ? (
-                      <Link
-                        key={j}
-                        href={`/dashboard/documents/${s.document_id}`}
-                        className="group flex items-center gap-2 text-xs text-[#7C6E67] hover:text-[#D95D39] transition-colors"
-                      >
+                      <Link key={j} href={`/dashboard/documents/${s.document_id}`} className={`${chip} hover:bg-[#EAF2FF] hover:text-[#2563EB]`}>
                         {row}
                       </Link>
                     ) : (
-                      <div key={j} className="flex items-center gap-2 text-xs text-[#7C6E67]">
-                        {row}
-                      </div>
+                      <span key={j} className={chip}>{row}</span>
                     );
                   })}
+                  </div>
                 </div>
               )}
             </div>
@@ -378,12 +379,12 @@ function AskNexus() {
 
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-white border border-[#E5DFD7] rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
+            <div className="bg-white border border-[#E6E8EE] rounded-2xl px-4 py-3 shadow-sm">
               <div className="flex gap-1">
-                <div className="w-2 h-2 bg-[#7C6E67]/40 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-[#7C6E67]/40 rounded-full animate-bounce"
+                <div className="w-2 h-2 bg-[#64748B]/40 rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-[#64748B]/40 rounded-full animate-bounce"
                   style={{ animationDelay: "0.1s" }} />
-                <div className="w-2 h-2 bg-[#7C6E67]/40 rounded-full animate-bounce"
+                <div className="w-2 h-2 bg-[#64748B]/40 rounded-full animate-bounce"
                   style={{ animationDelay: "0.2s" }} />
               </div>
             </div>
@@ -393,28 +394,28 @@ function AskNexus() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="sticky bottom-0 bg-[#FCFAF7] pt-2">
+      <div className="sticky bottom-0 bg-[#F6F7F9] pt-2">
         {attachError && (
           <p className="mb-2 text-xs text-red-600 font-medium">{attachError}</p>
         )}
 
         {voiceError && (
-          <p className="mb-2 text-xs text-[#B9832A] font-medium">{voiceError}</p>
+          <p className="mb-2 text-xs text-[#B45309] font-medium">{voiceError}</p>
         )}
 
         {listening && (
-          <p className="mb-2 text-xs text-[#D95D39] font-medium">Listening… speak now.</p>
+          <p className="mb-2 text-xs text-[#2563EB] font-medium">Listening… speak now.</p>
         )}
 
         {attachment && (
-          <div className="mb-2 inline-flex items-center gap-2 bg-white border border-[#E5DFD7]
+          <div className="mb-2 inline-flex items-center gap-2 bg-white border border-[#E6E8EE]
             rounded-xl px-2 py-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={attachment.url} alt="Attached" className="w-9 h-9 rounded-lg object-cover" />
-            <span className="text-xs text-[#7C6E67]">Photo attached</span>
+            <span className="text-xs text-[#64748B]">Photo attached</span>
             <button
               onClick={() => setAttachment(null)}
-              className="text-[#7C6E67]/50 hover:text-red-500 transition-colors text-sm px-1"
+              className="text-[#64748B]/50 hover:text-red-500 transition-colors text-sm px-1"
               title="Remove"
             >
               ✕
@@ -422,79 +423,48 @@ function AskNexus() {
           </div>
         )}
 
-        <div className="flex gap-2 items-center">
-          <label
-            title="Take a photo"
-            className="px-3 py-3 bg-white border border-[#E5DFD7] rounded-xl cursor-pointer
-              hover:border-[#D95D39] transition-colors text-base leading-none"
-          >
-            📷
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={attachImage}
-              className="hidden"
-            />
-          </label>
-
-          <label
-            title="Attach an image"
-            className="px-3 py-3 bg-white border border-[#E5DFD7] rounded-xl cursor-pointer
-              hover:border-[#D95D39] transition-colors text-base leading-none"
-          >
-            📎
-            <input
-              type="file"
-              accept="image/*"
-              onChange={attachImage}
-              className="hidden"
-            />
-          </label>
-
+        <div className="flex items-center gap-1 bg-white border border-[#E6E8EE] rounded-2xl shadow-lg shadow-[#0F172A]/5 pl-4 pr-2 py-2">
+          <span className="text-[#2563EB] mr-1">✦</span>
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder={listening ? "Listening…" : "Ask anything about your documents..."}
-            className="flex-1 px-4 py-3 bg-white border border-[#E5DFD7] rounded-xl
-              text-sm focus:outline-none focus:ring-2 focus:ring-[#D95D39]
-              focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
+            placeholder={listening ? "Listening…" : "Ask NEXUS anything..."}
+            className="flex-1 py-1.5 bg-transparent text-sm focus:outline-none text-[#1E293B] placeholder-[#94A3B8]"
           />
-
+          <label title="Attach an image" className="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]">
+            📎
+            <input type="file" accept="image/*" onChange={attachImage} className="hidden" />
+          </label>
+          <label title="Take a photo" className="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A] sm:hidden">
+            📷
+            <input type="file" accept="image/*" capture="environment" onChange={attachImage} className="hidden" />
+          </label>
           <button
             onClick={toggleListening}
-            title={
-              !voiceSupported
-                ? voiceBlockedReason
-                : listening
-                ? "Stop listening"
-                : "Speak your question"
-            }
-            className={`px-3 py-3 rounded-xl border transition-colors text-base leading-none ${
+            title={!voiceSupported ? voiceBlockedReason : listening ? "Stop listening" : "Speak your question"}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
               listening
-                ? "bg-[#D95D39] border-[#D95D39] text-white animate-pulse"
+                ? "bg-[#2563EB] text-white animate-pulse"
                 : voiceSupported
-                ? "bg-white border-[#E5DFD7] hover:border-[#D95D39]"
-                : "bg-white border-[#E5DFD7] opacity-40"
+                ? "text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]"
+                : "text-[#CBD5E1]"
             }`}
           >
             🎤
           </button>
-
           <button
             onClick={handleSend}
             disabled={loading || (!input.trim() && !attachment)}
-            className="px-5 py-3 bg-[#D95D39] text-white rounded-xl text-sm
-              font-medium hover:bg-[#C24E2B] disabled:opacity-50
-              transition-colors shadow-sm"
+            className="w-9 h-9 rounded-xl bg-[#2563EB] text-white flex items-center justify-center hover:bg-[#1D4ED8] disabled:opacity-40 transition-colors"
+            aria-label="Send"
           >
-            Send
+            ↑
           </button>
         </div>
-        <p className="text-[10px] text-[#7C6E67]/60 text-center mt-2">
-          NEXUS can make mistakes. Verify important info.
+        <p className="text-[10px] text-[#94A3B8] text-center mt-2">
+          Answers come from your vault. Verify important details.
         </p>
       </div>
     </div>
@@ -513,8 +483,8 @@ function AnswerText({ text }: { text: string }) {
             key={i}
             onClick={() => setRevealed((prev) => new Set(prev).add(i))}
             title="Tap to reveal"
-            className="font-mono bg-[#F4EFEA] text-[#7C6E67] px-1.5 py-0.5 rounded
-              hover:bg-[#FDF2EE] hover:text-[#D95D39] transition-colors"
+            className="font-mono bg-[#F1F5F9] text-[#64748B] px-1.5 py-0.5 rounded
+              hover:bg-[#EAF2FF] hover:text-[#2563EB] transition-colors"
           >
             •••• tap to reveal
           </button>

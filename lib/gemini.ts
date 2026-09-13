@@ -179,7 +179,7 @@ ${existingDocsText || "(none uploaded yet)"}
 Instructions:
 1. First, identify what task or purpose the user is asking about. If the question does not describe a recognizable task (e.g. it's unrelated to document requirements), say so plainly and do not invent a checklist.
 2. If it is a recognizable task, list the documents TYPICALLY required for it, based on general knowledge (assume India unless the question implies otherwise). Make clear this is general/typical guidance and exact requirements can vary by the specific bank, authority, or provider.
-3. Compare that typical list against the user's existing documents listed above. For each typically-required item, mark it as already available (naming the actual file) or missing. Only mark something as available if it is genuinely present in the list above — never assume the user has a document they haven't uploaded.
+3. Compare that typical list against the user's existing documents listed above. For each typically-required item, mark it as already available (naming the actual file) or missing. Only mark something as available if it is genuinely present in the list above, never assume the user has a document they haven't uploaded.
 4. Keep it concise and scannable.
 
 Respond ONLY with valid JSON, no markdown, no backticks, no explanation:

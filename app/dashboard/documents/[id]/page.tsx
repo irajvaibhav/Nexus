@@ -161,16 +161,16 @@ export default function DocumentDetailPage() {
   }
 
   if (loading) {
-    return <p className="text-sm text-[#7C6E67]/60">Loading document…</p>;
+    return <p className="text-sm text-[#64748B]/60">Loading document…</p>;
   }
 
   if (!doc) {
     return (
       <div className="max-w-2xl">
-        <h1 className="text-2xl font-serif font-semibold text-[#1A1412]">Document not found</h1>
-        <p className="text-sm text-[#7C6E67] mt-1">
+        <h1 className="text-2xl font-semibold text-[#0F172A]">Document not found</h1>
+        <p className="text-sm text-[#64748B] mt-1">
           It may have been deleted.{" "}
-          <Link href="/dashboard/documents" className="text-[#D95D39] hover:underline font-medium">
+          <Link href="/dashboard/documents" className="text-[#2563EB] hover:underline font-medium">
             Back to Documents
           </Link>
         </p>
@@ -191,17 +191,17 @@ export default function DocumentDetailPage() {
     <div className="max-w-4xl animate-fade-in-up">
       <Link
         href="/dashboard/documents"
-        className="text-xs text-[#7C6E67] hover:text-[#D95D39] transition-colors font-medium"
+        className="text-xs text-[#64748B] hover:text-[#2563EB] transition-colors font-medium"
       >
         ← All documents
       </Link>
 
       <div className="mt-3 flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
-          <h1 className="text-2xl font-serif font-semibold tracking-tight text-[#1A1412] break-words">
+          <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A] break-words">
             {doc.file_name}
           </h1>
-          <p className="text-sm text-[#7C6E67] mt-1">
+          <p className="text-sm text-[#64748B] mt-1">
             {doc.doc_type && <span className="capitalize">{doc.doc_type.replace(/_/g, " ")}</span>}
             {doc.doc_type && doc.doc_category && " · "}
             {doc.doc_category}
@@ -221,23 +221,23 @@ export default function DocumentDetailPage() {
               `/dashboard/ask?q=${encodeURIComponent(`What does my ${doc.file_name} say?`)}`
             )
           }
-          className="text-sm px-4 py-2 bg-[#D95D39] text-white rounded-xl font-medium
-            hover:bg-[#C24E2B] transition-colors shadow-sm"
+          className="text-sm px-4 py-2 bg-[#2563EB] text-white rounded-xl font-medium
+            hover:bg-[#1D4ED8] transition-colors shadow-sm"
         >
           Ask about this
         </button>
         {downloadUrl && (
           <a
             href={downloadUrl}
-            className="text-sm px-4 py-2 border border-[#E5DFD7] bg-white text-[#2E2724] rounded-xl
-              font-medium hover:border-[#D95D39] transition-colors"
+            className="text-sm px-4 py-2 border border-[#E6E8EE] bg-white text-[#1E293B] rounded-xl
+              font-medium hover:border-[#2563EB] transition-colors"
           >
             Download
           </a>
         )}
         <button
           onClick={() => setShowDeleteConfirm(true)}
-          className="text-sm px-4 py-2 border border-[#E5DFD7] bg-white text-[#7C6E67] rounded-xl
+          className="text-sm px-4 py-2 border border-[#E6E8EE] bg-white text-[#64748B] rounded-xl
             font-medium hover:border-red-300 hover:text-red-600 transition-colors"
         >
           Delete
@@ -245,28 +245,28 @@ export default function DocumentDetailPage() {
       </div>
 
       {lowConfidenceFields.length > 0 && (
-        <div className="mt-5 rounded-2xl border border-[#F9DFE6] bg-[#FDF1F5]/50 px-4 py-3.5">
+        <div className="mt-5 rounded-2xl border border-[#FBCFE8] bg-[#FDF2F8]/50 px-4 py-3.5">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
-              <p className="text-sm font-semibold text-[#C05C7B]">
+              <p className="text-sm font-semibold text-[#DB2777]">
                 {lowConfidenceFields.length === 1
-                  ? "NEXUS wasn't sure about 1 detail — please check it"
-                  : `NEXUS wasn't sure about ${lowConfidenceFields.length} details — please check them`}
+                  ? "1 detail to check"
+                  : `${lowConfidenceFields.length} details to check`}
               </p>
-              <p className="text-xs text-[#7C6E67] mt-0.5 leading-relaxed">
+              <p className="text-xs text-[#64748B] mt-0.5 leading-relaxed">
                 A blurry scan or handwriting can make a value a guess. NEXUS uses these values to
                 answer your questions and fill forms, so it won&apos;t treat them as certain until you
-                do. The marked rows below show how sure it was — confirm the ones that are right and
+                do. The marked rows show how sure it was. Confirm the ones that are right and
                 correct the rest.
               </p>
             </div>
             <button
               onClick={confirmAll}
               disabled={saving}
-              className="text-xs px-3 py-1.5 bg-white border border-[#F9DFE6] rounded-full font-semibold
-                text-[#C05C7B] hover:bg-[#FDF1F5] transition-colors disabled:opacity-50 shrink-0"
+              className="text-xs px-3 py-1.5 bg-white border border-[#FBCFE8] rounded-full font-semibold
+                text-[#DB2777] hover:bg-[#FDF2F8] transition-colors disabled:opacity-50 shrink-0"
             >
-              {saving ? "Saving…" : "All look right — confirm all"}
+              {saving ? "Saving…" : "Confirm all"}
             </button>
           </div>
         </div>
@@ -275,13 +275,13 @@ export default function DocumentDetailPage() {
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3 space-y-6">
           <section>
-            <h2 className="text-lg font-serif font-semibold text-[#1A1412] mb-3">
+            <h2 className="text-lg font-semibold text-[#0F172A] mb-3">
               What NEXUS found
             </h2>
 
             {fields.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-[#E5DFD7] p-6 text-center">
-                <p className="text-sm text-[#7C6E67]">
+              <div className="bg-white rounded-2xl border border-[#E6E8EE] p-6 text-center">
+                <p className="text-sm text-[#64748B]">
                   {doc.status === "processing" || doc.status === "uploaded"
                     ? "NEXUS is still reading this document."
                     : doc.status === "failed"
@@ -290,7 +290,7 @@ export default function DocumentDetailPage() {
                 </p>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-[#E5DFD7] divide-y divide-[#E5DFD7]/50">
+              <div className="bg-white rounded-2xl border border-[#E6E8EE] divide-y divide-[#E6E8EE]/50">
                 {fields.map((field) => {
                   const confidence = field.confidence ?? 1;
                   const uncertain = confidence < LOW_CONFIDENCE_THRESHOLD;
@@ -303,12 +303,12 @@ export default function DocumentDetailPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-[10px] font-semibold text-[#7C6E67]/60 font-mono uppercase tracking-wider">
+                            <p className="text-[10px] font-semibold text-[#64748B]/60 font-mono uppercase tracking-wider">
                               {field.field_name}
                             </p>
                             {uncertain && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold
-                                bg-[#FDF1F5] text-[#C05C7B] border border-[#F9DFE6]">
+                                bg-[#FDF2F8] text-[#DB2777] border border-[#FBCFE8]">
                                 {Math.round(confidence * 100)}% sure
                               </span>
                             )}
@@ -324,34 +324,34 @@ export default function DocumentDetailPage() {
                                   if (e.key === "Enter") confirmField(field, draftValue);
                                   if (e.key === "Escape") setEditingId(null);
                                 }}
-                                className="flex-1 px-3 py-1.5 border border-[#E5DFD7] bg-[#FCFAF7] rounded-xl
-                                  text-sm focus:outline-none focus:ring-2 focus:ring-[#D95D39]
-                                  focus:border-transparent text-[#2E2724]"
+                                className="flex-1 px-3 py-1.5 border border-[#E6E8EE] bg-[#F6F7F9] rounded-xl
+                                  text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB]
+                                  focus:border-transparent text-[#1E293B]"
                               />
                               <button
                                 onClick={() => confirmField(field, draftValue)}
                                 disabled={saving || !draftValue.trim()}
-                                className="text-xs px-3 py-1.5 bg-[#D95D39] text-white rounded-xl
-                                  font-semibold hover:bg-[#C24E2B] disabled:opacity-40 transition-colors"
+                                className="text-xs px-3 py-1.5 bg-[#2563EB] text-white rounded-xl
+                                  font-semibold hover:bg-[#1D4ED8] disabled:opacity-40 transition-colors"
                               >
                                 Save
                               </button>
                               <button
                                 onClick={() => setEditingId(null)}
-                                className="text-xs px-2 py-1.5 text-[#7C6E67] hover:text-[#2E2724]"
+                                className="text-xs px-2 py-1.5 text-[#64748B] hover:text-[#1E293B]"
                               >
                                 Cancel
                               </button>
                             </div>
                           ) : (
-                            <p className="text-sm font-semibold text-[#2E2724] mt-0.5 break-words">
+                            <p className="text-sm font-semibold text-[#1E293B] mt-0.5 break-words">
                               {sensitive && !isRevealed
                                 ? maskValue(field.field_value)
                                 : field.field_value}
                               {sensitive && (
                                 <button
                                   onClick={() => toggleReveal(field.id)}
-                                  className="ml-2 text-[11px] text-[#D95D39] hover:underline font-medium"
+                                  className="ml-2 text-[11px] text-[#2563EB] hover:underline font-medium"
                                 >
                                   {isRevealed ? "Hide" : "Reveal"}
                                 </button>
@@ -359,7 +359,7 @@ export default function DocumentDetailPage() {
                             </p>
                           )}
 
-                          <p className="text-[11px] text-[#7C6E67]/70 mt-1">
+                          <p className="text-[11px] text-[#64748B]/70 mt-1">
                             From {doc.file_name}
                             {field.page_number ? ` · page ${field.page_number}` : ""}
                           </p>
@@ -371,8 +371,8 @@ export default function DocumentDetailPage() {
                               <button
                                 onClick={() => confirmField(field, field.field_value)}
                                 disabled={saving}
-                                className="text-xs px-2.5 py-1 rounded-xl bg-[#6E885B] text-white
-                                  font-medium hover:bg-[#5C744B] transition-colors shadow-sm disabled:opacity-50"
+                                className="text-xs px-2.5 py-1 rounded-xl bg-[#15803D] text-white
+                                  font-medium hover:bg-[#166534] transition-colors shadow-sm disabled:opacity-50"
                               >
                                 Looks right
                               </button>
@@ -382,8 +382,8 @@ export default function DocumentDetailPage() {
                                 setEditingId(field.id);
                                 setDraftValue(field.field_value);
                               }}
-                              className="text-xs px-2.5 py-1 rounded-xl border border-[#E5DFD7]
-                                text-[#7C6E67] hover:border-[#D95D39] hover:text-[#D95D39] transition-colors"
+                              className="text-xs px-2.5 py-1 rounded-xl border border-[#E6E8EE]
+                                text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors"
                             >
                               Edit
                             </button>
@@ -398,10 +398,10 @@ export default function DocumentDetailPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-serif font-semibold text-[#1A1412] mb-3">Reminders</h2>
-            <div className="bg-white rounded-2xl border border-[#E5DFD7] divide-y divide-[#E5DFD7]/50">
+            <h2 className="text-lg font-semibold text-[#0F172A] mb-3">Reminders</h2>
+            <div className="bg-white rounded-2xl border border-[#E6E8EE] divide-y divide-[#E6E8EE]/50">
               {deadlines.length === 0 ? (
-                <p className="px-4 py-5 text-sm text-[#7C6E67]/70 text-center">
+                <p className="px-4 py-5 text-sm text-[#64748B]/70 text-center">
                   NEXUS didn&apos;t find an expiry date on this document.
                 </p>
               ) : (
@@ -410,8 +410,8 @@ export default function DocumentDetailPage() {
                   return (
                     <div key={d.id} className="flex items-center justify-between px-4 py-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#2E2724] truncate">{d.title}</p>
-                        <p className="text-xs text-[#7C6E67]">
+                        <p className="text-sm font-medium text-[#1E293B] truncate">{d.title}</p>
+                        <p className="text-xs text-[#64748B]">
                           Expires {new Date(d.expiry_date).toLocaleDateString()}
                         </p>
                       </div>
@@ -429,10 +429,10 @@ export default function DocumentDetailPage() {
         </div>
 
         <div className="lg:col-span-2">
-          <h2 className="text-lg font-serif font-semibold text-[#1A1412] mb-3">Preview</h2>
-          <div className="bg-white rounded-2xl border border-[#E5DFD7] overflow-hidden">
+          <h2 className="text-lg font-semibold text-[#0F172A] mb-3">Preview</h2>
+          <div className="bg-white rounded-2xl border border-[#E6E8EE] overflow-hidden">
             {!previewUrl ? (
-              <p className="p-6 text-sm text-[#7C6E67]/70 text-center">Loading preview…</p>
+              <p className="p-6 text-sm text-[#64748B]/70 text-center">Loading preview…</p>
             ) : doc.file_type === "application/pdf" ? (
               <iframe src={previewUrl} title={doc.file_name} className="w-full h-[420px]" />
             ) : (
@@ -444,12 +444,12 @@ export default function DocumentDetailPage() {
       </div>
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-[#1A1412]/30 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-[#E5DFD7]">
-            <h3 className="text-lg font-serif font-semibold text-[#1A1412]">
+        <div className="fixed inset-0 bg-[#0F172A]/30 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-[#E6E8EE]">
+            <h3 className="text-lg font-semibold text-[#0F172A]">
               Delete this document?
             </h3>
-            <p className="text-sm text-[#7C6E67] mt-1.5">
+            <p className="text-sm text-[#64748B] mt-1.5">
               {deadlines.length > 0
                 ? `This also removes ${deadlines.length} reminder${deadlines.length === 1 ? "" : "s"} and everything NEXUS extracted from it.`
                 : "This also removes everything NEXUS extracted from it."}{" "}
@@ -459,14 +459,14 @@ export default function DocumentDetailPage() {
               <button
                 onClick={deleteDocument}
                 disabled={deleting}
-                className="flex-1 py-2.5 bg-[#D95D39] text-white rounded-xl text-sm font-semibold
-                  hover:bg-[#C24E2B] disabled:opacity-50 transition-colors shadow-sm"
+                className="flex-1 py-2.5 bg-[#2563EB] text-white rounded-xl text-sm font-semibold
+                  hover:bg-[#1D4ED8] disabled:opacity-50 transition-colors shadow-sm"
               >
                 {deleting ? "Deleting…" : "Delete document"}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2.5 text-[#7C6E67] text-sm font-medium hover:text-[#2E2724] transition-colors"
+                className="px-4 py-2.5 text-[#64748B] text-sm font-medium hover:text-[#1E293B] transition-colors"
               >
                 Cancel
               </button>

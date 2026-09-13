@@ -5,19 +5,19 @@ export type CategoryOption = {
 };
 
 export const BUILT_IN_CATEGORIES: CategoryOption[] = [
-  { name: "Essential Docs", icon: "🪪", color: "bg-[#FDF2EE] text-[#D95D39] border border-[#F5DFD6]" },
-  { name: "Bank Docs", icon: "🏦", color: "bg-[#FEF9EC] text-[#D48C2B] border border-[#FBEAC9]" },
-  { name: "Vehicle", icon: "🚗", color: "bg-[#F3F6F1] text-[#6E885B] border border-[#E1EAD8]" },
-  { name: "Non Essential Docs", icon: "📁", color: "bg-[#F8F6F3] text-[#7C6E67] border border-[#ECE7E1]" },
+  { name: "Essential Docs", icon: "🪪", color: "bg-[#EAF2FF] text-[#2563EB] border border-[#CFE0FF]" },
+  { name: "Bank Docs", icon: "🏦", color: "bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]" },
+  { name: "Vehicle", icon: "🚗", color: "bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]" },
+  { name: "Non Essential Docs", icon: "📁", color: "bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]" },
 ];
 
 const CUSTOM_COLOR_PALETTE = [
-  "bg-[#FDF2EE] text-[#D95D39] border border-[#F5DFD6]",
-  "bg-[#FEF9EC] text-[#D48C2B] border border-[#FBEAC9]",
-  "bg-[#F3F6F1] text-[#6E885B] border border-[#E1EAD8]",
-  "bg-[#F8F6F3] text-[#7C6E67] border border-[#ECE7E1]",
-  "bg-[#FDF1F5] text-[#C05C7B] border border-[#F9DFE6]",
-  "bg-[#EFF7F6] text-[#4F8B82] border border-[#D5EAE7]",
+  "bg-[#EAF2FF] text-[#2563EB] border border-[#CFE0FF]",
+  "bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]",
+  "bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]",
+  "bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]",
+  "bg-[#FDF2F8] text-[#DB2777] border border-[#FBCFE8]",
+  "bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]",
 ];
 
 export type CustomCategoryRow = { name: string; icon: string };

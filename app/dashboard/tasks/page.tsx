@@ -64,9 +64,9 @@ export default function TasksPage() {
 
   return (
     <div className="max-w-2xl animate-fade-in-up">
-      <h1 className="text-2xl font-serif font-semibold tracking-tight text-[#1A1412]">Tasks</h1>
-      <p className="text-sm text-[#7C6E67] mt-1">
-        Admin to-dos you want to keep track of — renewals, follow-ups, anything on your plate.
+      <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Tasks</h1>
+      <p className="text-sm text-[#64748B] mt-1">
+        Renewals, follow-ups, anything on your plate.
       </p>
 
       <form onSubmit={addTask} className="mt-6 flex gap-2">
@@ -74,59 +74,59 @@ export default function TasksPage() {
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           placeholder="Add a task..."
-          className="flex-1 px-4 py-2.5 bg-white border border-[#E5DFD7] rounded-xl
-            text-sm focus:outline-none focus:ring-2 focus:ring-[#D95D39] focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
+          className="flex-1 px-4 py-2.5 bg-white border border-[#E6E8EE] rounded-xl
+            text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent text-[#1E293B] placeholder-[#64748B]/50"
         />
         <button
           type="submit"
           disabled={!newTitle.trim()}
-          className="px-4 py-2.5 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-xl text-sm font-medium
-            transition-colors shadow-sm cursor-pointer"
+          className="px-4 py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl text-sm font-medium
+            transition-colors cursor-pointer"
         >
           Add
         </button>
       </form>
 
       <div className="mt-4 flex items-center justify-between">
-        <p className="text-xs text-[#7C6E67]">
+        <p className="text-xs text-[#64748B]">
           {openTasks.length} open{doneTasks.length > 0 && ` · ${doneTasks.length} done`}
         </p>
         {doneTasks.length > 0 && (
           <button
             onClick={() => setShowDone((v) => !v)}
-            className="text-xs text-[#D95D39] hover:underline font-semibold"
+            className="text-xs text-[#2563EB] hover:underline font-semibold"
           >
             {showDone ? "Hide completed" : "Show completed"}
           </button>
         )}
       </div>
 
-      <div className="mt-2 bg-white rounded-2xl border border-[#E5DFD7] divide-y divide-[#E5DFD7]/50">
+      <div className="mt-2 bg-white rounded-2xl border border-[#E6E8EE] divide-y divide-[#E6E8EE]/50">
         {loading ? (
-          <p className="px-4 py-8 text-sm text-[#7C6E67]/60 text-center">Loading tasks...</p>
+          <p className="px-4 py-8 text-sm text-[#64748B]/60 text-center">Loading tasks...</p>
         ) : visible.length === 0 ? (
-          <p className="px-4 py-8 text-sm text-[#7C6E67]/60 text-center">
+          <p className="px-4 py-8 text-sm text-[#64748B]/60 text-center">
             No tasks yet. Add one above.
           </p>
         ) : (
           visible.map((task) => (
-            <div key={task.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-[#FCFAF7] transition-colors">
+            <div key={task.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-[#F6F7F9] transition-colors">
               <button
                 onClick={() => toggleDone(task)}
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
                   task.done
-                    ? "bg-[#6E885B] border-[#6E885B] text-white"
-                    : "border-[#E5DFD7] hover:border-[#D95D39] bg-white"
+                    ? "bg-[#15803D] border-[#15803D] text-white"
+                    : "border-[#E6E8EE] hover:border-[#2563EB] bg-white"
                 }`}
               >
                 {task.done && "✓"}
               </button>
-              <p className={`text-sm flex-1 ${task.done ? "text-[#7C6E67]/50 line-through" : "text-[#2E2724]"}`}>
+              <p className={`text-sm flex-1 ${task.done ? "text-[#64748B]/50 line-through" : "text-[#1E293B]"}`}>
                 {task.title}
               </p>
               <button
                 onClick={() => deleteTask(task.id)}
-                className="text-[#7C6E67]/40 hover:text-red-500 transition-colors"
+                className="text-[#64748B]/40 hover:text-red-500 transition-colors"
                 title="Delete"
               >
                 ✕

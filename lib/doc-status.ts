@@ -14,32 +14,32 @@ export type DocHealth = {
 const HEALTH: Record<HealthKey, Omit<DocHealth, "key">> = {
   processing: {
     label: "Reading…",
-    badge: "bg-[#EFF7F6] text-[#4F8B82] border border-[#D5EAE7]",
+    badge: "bg-[#F0FDFA] text-[#0F766E] border border-[#99F6E4]",
     action: "NEXUS is still reading this document",
   },
   failed: {
     label: "Couldn't read",
-    badge: "bg-[#F8F6F3] text-[#7C6E67] border border-[#ECE7E1]",
-    action: "NEXUS couldn't read this file — try again or upload a clearer copy",
+    badge: "bg-[#F8FAFC] text-[#64748B] border border-[#E2E8F0]",
+    action: "Couldn't read this file. Retry or upload a clearer copy",
   },
   expired: {
     label: "Action needed",
-    badge: "bg-[#FDF2EE] text-[#D95D39] border border-[#F5DFD6]",
-    action: "This has expired — see what to do next",
+    badge: "bg-[#EAF2FF] text-[#2563EB] border border-[#CFE0FF]",
+    action: "Expired. See what to do next",
   },
   expiring: {
     label: "Attention",
-    badge: "bg-[#FEF9EC] text-[#D48C2B] border border-[#FBEAC9]",
-    action: "Expiring soon — renew or plan it",
+    badge: "bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]",
+    action: "Expiring soon. Renew or plan it",
   },
   needs_review: {
     label: "Needs review",
-    badge: "bg-[#FDF1F5] text-[#C05C7B] border border-[#F9DFE6]",
-    action: "NEXUS wasn't sure about some details — check them",
+    badge: "bg-[#FDF2F8] text-[#DB2777] border border-[#FBCFE8]",
+    action: "Some details need a check",
   },
   healthy: {
     label: "Verified",
-    badge: "bg-[#F3F6F1] text-[#6E885B] border border-[#E1EAD8]",
+    badge: "bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]",
     action: "Everything looks in order",
   },
 };

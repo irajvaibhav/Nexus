@@ -11,13 +11,12 @@ import { useEffect, useState } from "react";
 
 const navItems = [
   { href: "/dashboard", icon: HomeIcon, label: "Home" },
-  { href: "/dashboard/documents", icon: DocumentsIcon, label: "Documents" },
+  { href: "/dashboard/documents", icon: DocumentsIcon, label: "Vault" },
   { href: "/dashboard/ask", icon: ChatIcon, label: "Ask NEXUS" },
   { href: "/dashboard/scan", icon: ScanIcon, label: "Scan & Fill" },
   { href: "/dashboard/reminders", icon: BellIcon, label: "Reminders" },
   { href: "/dashboard/tasks", icon: CheckSquareIcon, label: "Tasks" },
   { href: "/dashboard/activity", icon: ActivityIcon, label: "Activity" },
-  { href: "/dashboard/settings", icon: GearIcon, label: "Settings" },
 ];
 
 export default function DashboardLayout({
@@ -29,7 +28,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const [supabase] = useState(() => createClient());
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [ask, setAsk] = useState("");
 
   useEffect(() => {
     async function getUser() {
@@ -39,7 +38,6 @@ export default function DashboardLayout({
         return;
       }
       setName(user.user_metadata?.full_name || "User");
-      setEmail(user.email || "");
     }
     getUser();
   }, [router, supabase]);
@@ -50,90 +48,115 @@ export default function DashboardLayout({
     router.refresh();
   }
 
+  function submitAsk() {
+    const q = ask.trim();
+    setAsk("");
+    router.push(q ? `/dashboard/ask?q=${encodeURIComponent(q)}` : "/dashboard/ask");
+  }
+
+  const onAskPage = pathname === "/dashboard/ask";
+
   return (
-    <div className="min-h-screen flex bg-[#FCFAF7]">
-      <aside className="w-64 flex flex-col fixed h-full bg-[#F4EFEA] border-r border-[#E5DFD7] z-20">
+    <div className="min-h-screen flex bg-[#F6F7F9]">
+      <aside className="w-[76px] flex flex-col items-center fixed h-full bg-white border-r border-[#E6E8EE] z-20 py-5">
+        <Link
+          href="/dashboard"
+          className="w-11 h-11 rounded-2xl bg-[#0F172A] text-white flex items-center justify-center
+            font-bold tracking-tight text-lg"
+          title="NEXUS"
+        >
+          N
+        </Link>
 
-        <div className="px-6 py-6">
-          <h1 className="text-2xl font-serif font-bold tracking-widest text-[#1A1412]">
-            NE<span className="text-[#D95D39]">X</span>US
-          </h1>
-        </div>
-
-        <nav className="flex-1 px-4 space-y-1">
+        <nav className="flex-1 mt-8 flex flex-col items-center gap-1.5">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href);
             const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-[15px]
-                  transition-all ${
-                    isActive
-                      ? "bg-[#D95D39] text-white font-medium shadow-sm shadow-[#D95D39]/20"
-                      : "text-[#7C6E67] hover:bg-[#EAE2D9] hover:text-[#2E2724]"
-                  }`}
+                title={item.label}
+                aria-label={item.label}
+                className={`group relative w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
+                  isActive
+                    ? "bg-[#EAF2FF] text-[#2563EB]"
+                    : "text-[#94A3B8] hover:bg-[#F1F5F9] hover:text-[#1E293B]"
+                }`}
               >
-                <Icon className="w-[18px] h-[18px] shrink-0" />
-                <span>{item.label}</span>
+                <Icon className="w-5 h-5" />
+                <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 rounded-lg bg-[#0F172A] text-white
+                  text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                  {item.label}
+                </span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 mx-4 mb-4 rounded-2xl bg-[#EAE2D9]/40 border border-[#E5DFD7]/80">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#D95D39] flex items-center
-              justify-center text-sm font-bold text-white shrink-0">
-              {name.charAt(0).toUpperCase()}
-            </div>
-            <div className="overflow-hidden flex-1">
-              <p className="text-sm font-semibold text-[#2E2724] truncate">{name}</p>
-              <p className="text-xs text-[#7C6E67] truncate">{email}</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="text-[#7C6E67] hover:text-[#D95D39] transition-colors p-1"
-              title="Logout"
-            >
+        <div className="flex flex-col items-center gap-2">
+          <Link
+            href="/dashboard/settings"
+            title="Settings"
+            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
+              pathname.startsWith("/dashboard/settings")
+                ? "bg-[#EAF2FF] text-[#2563EB]"
+                : "text-[#94A3B8] hover:bg-[#F1F5F9] hover:text-[#1E293B]"
+            }`}
+          >
+            <GearIcon className="w-5 h-5" />
+          </Link>
+          <button
+            onClick={handleLogout}
+            title={`Sign out ${name}`}
+            className="w-9 h-9 rounded-full bg-[#2563EB] text-white text-sm font-semibold flex items-center
+              justify-center hover:bg-[#1D4ED8] transition-colors group relative"
+          >
+            {name.charAt(0).toUpperCase() || "·"}
+            <span className="absolute inset-0 rounded-full bg-[#0F172A] text-white flex items-center justify-center
+              opacity-0 group-hover:opacity-100 transition-opacity">
               <LogoutIcon className="w-4 h-4" />
-            </button>
-          </div>
+            </span>
+          </button>
         </div>
       </aside>
 
-      <main className="flex-1 bg-[#FCFAF7] min-h-screen relative overflow-hidden ml-64">
-        {/* Soft Ambient Sunset Glow */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[radial-gradient(circle_at_top_right,_#FED7AA_0%,_#FFEDD5_45%,_transparent_75%)] opacity-55 pointer-events-none z-0" />
-
-        <header className="sticky top-0 z-10 bg-[#FCFAF7]/80 backdrop-blur-md border-b border-[#E5DFD7] px-6 py-3
-          flex items-center justify-end gap-4 relative">
-          <div className="flex items-center gap-3">
-            {/* Reachable from every page, not only Home and the sidebar. */}
-            {pathname !== "/dashboard/ask" && (
-              <Link
-                href="/dashboard/ask"
-                className="flex items-center gap-2 px-3.5 py-2 bg-[#D95D39] hover:bg-[#C24E2B] text-white
-                  rounded-xl text-sm font-semibold shadow-sm shadow-[#D95D39]/20 transition-colors"
-              >
-                <ChatIcon className="w-4 h-4" />
-                Ask NEXUS
-              </Link>
-            )}
-            <Link
-              href="/dashboard/reminders"
-              className="relative p-2 text-[#7C6E67] hover:text-[#2E2724] transition-colors"
-              title="Reminders"
-            >
-              <BellIcon className="w-5 h-5" />
-            </Link>
-          </div>
-        </header>
-
-        <div className="p-6 relative z-10">
+      <main className="flex-1 min-h-screen ml-[76px]">
+        <div className={`px-8 pt-8 max-w-6xl mx-auto ${onAskPage ? "pb-8" : "pb-32"}`}>
           {children}
         </div>
+
+        {!onAskPage && (
+          <div className="fixed bottom-6 left-[76px] right-0 flex justify-center px-6 pointer-events-none z-30">
+            <form
+              onSubmit={(e) => { e.preventDefault(); submitAsk(); }}
+              className="pointer-events-auto w-full max-w-xl flex items-center gap-2 bg-white rounded-2xl
+                border border-[#E6E8EE] shadow-lg shadow-[#0F172A]/8 pl-4 pr-2 py-2"
+            >
+              <span className="text-[#2563EB]">✦</span>
+              <input
+                value={ask}
+                onChange={(e) => setAsk(e.target.value)}
+                placeholder="Ask NEXUS anything, e.g. 'when does my insurance expire?'"
+                className="flex-1 bg-transparent text-sm focus:outline-none text-[#1E293B] placeholder-[#94A3B8]"
+              />
+              <Link
+                href="/dashboard/ask?voice=1"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E6E8EE] text-xs
+                  font-medium text-[#1E293B] hover:bg-[#F8FAFC]"
+              >
+                🎙 Voice
+              </Link>
+              <button
+                type="submit"
+                className="w-9 h-9 rounded-xl bg-[#2563EB] text-white flex items-center justify-center hover:bg-[#1D4ED8]"
+                aria-label="Ask"
+              >
+                ↑
+              </button>
+            </form>
+          </div>
+        )}
       </main>
     </div>
   );

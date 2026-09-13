@@ -269,10 +269,9 @@ export default function ScanFillPage() {
 
   return (
     <div className="max-w-2xl animate-fade-in-up">
-      <h1 className="text-2xl font-serif font-semibold tracking-tight text-[#1A1412]">Scan &amp; Fill</h1>
-      <p className="text-sm text-[#7C6E67] mt-1">
-        Photograph or upload any blank form. NEXUS fills in what it knows from your documents —
-        you check it before anything leaves NEXUS.
+      <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Scan &amp; Fill</h1>
+      <p className="text-sm text-[#64748B] mt-1">
+        Upload a blank form. NEXUS fills what it knows, you check the rest.
       </p>
 
       <Steps stage={stage} />
@@ -285,22 +284,22 @@ export default function ScanFillPage() {
           className={`mt-5 border-2 border-dashed rounded-2xl p-10 text-center
             transition-colors ${
               dragOver
-                ? "border-[#D95D39] bg-[#FDF2EE]"
-                : "border-[#E5DFD7] bg-white hover:border-[#D95D39]/50 hover:bg-[#FAF8F5]"
+                ? "border-[#2563EB] bg-[#EAF2FF]"
+                : "border-[#E6E8EE] bg-white hover:border-[#2563EB]/50 hover:bg-[#F8FAFC]"
             }`}
         >
-          <ScanIcon className="w-9 h-9 mx-auto mb-3 text-[#D95D39]" />
-          <p className="text-sm font-semibold text-[#2E2724]">
+          <ScanIcon className="w-9 h-9 mx-auto mb-3 text-[#2563EB]" />
+          <p className="text-sm font-semibold text-[#1E293B]">
             {scanning ? "NEXUS is reading your form…" : "Drag & drop a form, or take a photo"}
           </p>
-          <p className="text-xs text-[#7C6E67] mt-1">
-            {scanning ? "Finding the fields and matching them to your documents" : "PDF, JPG, PNG — Max 10MB"}
+          <p className="text-xs text-[#64748B] mt-1">
+            {scanning ? "Finding the fields and matching them to your documents" : "PDF, JPG or PNG, up to 10MB"}
           </p>
 
           {!scanning && (
             <div className="mt-4 flex items-center justify-center gap-2">
-              <label className="inline-block px-4 py-2 bg-[#D95D39] text-white
-                rounded-xl text-sm font-medium cursor-pointer hover:bg-[#C24E2B]
+              <label className="inline-block px-4 py-2 bg-[#2563EB] text-white
+                rounded-xl text-sm font-medium cursor-pointer hover:bg-[#1D4ED8]
                 transition-colors shadow-sm">
                 Take photo
                 <input
@@ -311,8 +310,8 @@ export default function ScanFillPage() {
                   className="hidden"
                 />
               </label>
-              <label className="inline-block px-4 py-2 bg-white border border-[#E5DFD7] text-[#2E2724]
-                rounded-xl text-sm font-medium cursor-pointer hover:border-[#D95D39] hover:bg-[#FAF8F5]
+              <label className="inline-block px-4 py-2 bg-white border border-[#E6E8EE] text-[#1E293B]
+                rounded-xl text-sm font-medium cursor-pointer hover:border-[#2563EB] hover:bg-[#F8FAFC]
                 transition-colors shadow-sm">
                 Browse files
                 <input
@@ -331,23 +330,23 @@ export default function ScanFillPage() {
 
       {stage === "review" && (
         <div className="mt-5">
-          <h2 className="text-lg font-serif font-semibold text-[#1A1412]">{formName}</h2>
-          <p className="text-xs text-[#7C6E67] mt-0.5">
+          <h2 className="text-lg font-semibold text-[#0F172A]">{formName}</h2>
+          <p className="text-xs text-[#64748B] mt-0.5">
             NEXUS filled {filledFields.length} of {fields.length} fields.
             {blankFields.length > 0 && ` ${blankFields.length} need${blankFields.length === 1 ? "s" : ""} your input.`}
             {uncertainFields.length > 0 && ` ${uncertainFields.length} worth double-checking.`}
           </p>
 
           {uncertainFields.length > 0 && (
-            <div className="mt-4 rounded-2xl border border-[#FBEAC9] bg-[#FEF9EC] px-4 py-3">
-              <p className="text-sm text-[#8A6420]">
+            <div className="mt-4 rounded-2xl border border-[#FDE68A] bg-[#FFFBEB] px-4 py-3">
+              <p className="text-sm text-[#92400E]">
                 The highlighted fields are NEXUS&apos;s best guess, not a certain match. Correct
                 anything that&apos;s wrong before you export.
               </p>
             </div>
           )}
 
-          <div className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] divide-y divide-[#E5DFD7]/50">
+          <div className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] divide-y divide-[#E6E8EE]/50">
             {fields.map((field, i) => {
               const uncertain = field.value.trim().length > 0 && field.confidence < LOW_CONFIDENCE;
               const sensitive = isSensitiveField(field.label);
@@ -356,29 +355,29 @@ export default function ScanFillPage() {
               return (
                 <div
                   key={i}
-                  className={`px-4 py-3.5 ${uncertain ? "border-l-2 border-l-[#D48C2B]" : ""}`}
+                  className={`px-4 py-3.5 ${uncertain ? "border-l-2 border-l-[#D97706]" : ""}`}
                 >
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <p className="text-[10px] font-semibold text-[#7C6E67]/60 font-mono uppercase tracking-wider">
+                    <p className="text-[10px] font-semibold text-[#64748B]/60 font-mono uppercase tracking-wider">
                       {field.label}
                     </p>
                     <div className="flex items-center gap-2">
                       {uncertain && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold
-                          bg-[#FEF9EC] text-[#D48C2B] border border-[#FBEAC9]">
+                          bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
                           {Math.round(field.confidence * 100)}% sure
                         </span>
                       )}
                       {field.edited && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold
-                          bg-[#F3F6F1] text-[#6E885B] border border-[#E1EAD8]">
+                          bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">
                           your edit
                         </span>
                       )}
                       {sensitive && (
                         <button
                           onClick={() => toggleReveal(i)}
-                          className="text-[11px] text-[#D95D39] hover:underline font-medium"
+                          className="text-[11px] text-[#2563EB] hover:underline font-medium"
                         >
                           {hidden ? "Reveal" : "Hide"}
                         </button>
@@ -392,16 +391,16 @@ export default function ScanFillPage() {
                     onChange={(e) => updateField(i, e.target.value)}
                     placeholder={
                       field.likelySourceType
-                        ? `Not in your documents — usually on your ${field.likelySourceType}`
-                        : "NEXUS couldn't find this — type it yourself"
+                        ? `Usually on your ${field.likelySourceType}`
+                        : "Not found. Type it in"
                     }
-                    className="mt-1.5 w-full px-3 py-2 bg-[#FCFAF7] border border-[#E5DFD7] rounded-xl
-                      text-sm focus:outline-none focus:ring-2 focus:ring-[#D95D39] focus:border-transparent
-                      text-[#2E2724] placeholder-[#7C6E67]/50"
+                    className="mt-1.5 w-full px-3 py-2 bg-[#F6F7F9] border border-[#E6E8EE] rounded-xl
+                      text-sm focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent
+                      text-[#1E293B] placeholder-[#64748B]/50"
                   />
 
                   {field.foundByNexus && field.source && !field.edited && (
-                    <p className="text-[11px] text-[#7C6E67]/75 mt-1">From {field.source}</p>
+                    <p className="text-[11px] text-[#64748B]/75 mt-1">From {field.source}</p>
                   )}
                 </div>
               );
@@ -411,15 +410,15 @@ export default function ScanFillPage() {
           <div className="mt-5 flex gap-2">
             <button
               onClick={() => setStage("preview")}
-              className="flex-1 py-2.5 bg-[#D95D39] text-white rounded-xl text-sm font-semibold
-                hover:bg-[#C24E2B] transition-colors shadow-sm"
+              className="flex-1 py-2.5 bg-[#2563EB] text-white rounded-xl text-sm font-semibold
+                hover:bg-[#1D4ED8] transition-colors shadow-sm"
             >
               Review the filled form
             </button>
             <button
               onClick={reset}
-              className="px-4 py-2.5 border border-[#E5DFD7] rounded-xl text-sm font-medium
-                text-[#7C6E67] hover:border-[#D95D39] hover:text-[#D95D39] transition-colors bg-white"
+              className="px-4 py-2.5 border border-[#E6E8EE] rounded-xl text-sm font-medium
+                text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors bg-white"
             >
               Start over
             </button>
@@ -429,17 +428,17 @@ export default function ScanFillPage() {
 
       {stage === "preview" && (
         <div className="mt-5">
-          <h2 className="text-lg font-serif font-semibold text-[#1A1412]">
+          <h2 className="text-lg font-semibold text-[#0F172A]">
             This is what you&apos;ll get
           </h2>
-          <p className="text-xs text-[#7C6E67] mt-0.5">
+          <p className="text-xs text-[#64748B] mt-0.5">
             {hasFillablePdf
-              ? "Approving downloads the same PDF with these values written into its fields — ready to print, email, or upload wherever the form is due. Nothing is sent anywhere by NEXUS."
+              ? "You get this PDF with the values filled in, ready to print, sign or send. NEXUS sends nothing anywhere."
               : "This form has no fillable fields, so NEXUS gives you the values to copy across instead of a filled file."}
           </p>
 
-          <div className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
-            <p className="text-base font-serif font-semibold text-[#1A1412] pb-3 border-b border-[#E5DFD7]">
+          <div className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
+            <p className="text-base font-semibold text-[#0F172A] pb-3 border-b border-[#E6E8EE]">
               {formName}
             </p>
             <dl className="mt-4 space-y-3">
@@ -447,19 +446,19 @@ export default function ScanFillPage() {
                 const manual = hasFillablePdf && field.value.trim().length > 0 && !field.pdfFieldName;
                 return (
                   <div key={i} className="flex items-baseline justify-between gap-4">
-                    <dt className="text-xs text-[#7C6E67] shrink-0 max-w-[45%]">{field.label}</dt>
+                    <dt className="text-xs text-[#64748B] shrink-0 max-w-[45%]">{field.label}</dt>
                     <dd className="text-right break-words">
                       <span
                         className={`text-sm ${
                           field.value.trim()
-                            ? "font-semibold text-[#2E2724]"
-                            : "text-[#7C6E67]/50 italic"
+                            ? "font-semibold text-[#1E293B]"
+                            : "text-[#64748B]/50 italic"
                         }`}
                       >
                         {field.value.trim() || "left blank"}
                       </span>
                       {manual && (
-                        <span className="block text-[11px] text-[#D48C2B] mt-0.5">
+                        <span className="block text-[11px] text-[#D97706] mt-0.5">
                           you&apos;ll need to write this one in yourself
                         </span>
                       )}
@@ -471,17 +470,17 @@ export default function ScanFillPage() {
           </div>
 
           {blankFields.length > 0 && (
-            <p className="mt-3 text-xs text-[#7C6E67]">
+            <p className="mt-3 text-xs text-[#64748B]">
               {blankFields.length} field{blankFields.length === 1 ? "" : "s"} will be left blank for
               you to complete by hand.
             </p>
           )}
 
           {manualFields.length > 0 && (
-            <p className="mt-2 text-xs text-[#8A6420] bg-[#FEF9EC] border border-[#FBEAC9]
+            <p className="mt-2 text-xs text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A]
               rounded-xl px-3 py-2">
               {manualFields.length} value{manualFields.length === 1 ? "" : "s"} can&apos;t be written
-              into this PDF — NEXUS can see {manualFields.length === 1 ? "that field" : "those fields"} on
+              into this PDF. NEXUS can see {manualFields.length === 1 ? "that field" : "those fields"} on
               the page, but the file has no real form field behind {manualFields.length === 1 ? "it" : "them"}.
               Copy {manualFields.length === 1 ? "it" : "them"} in by hand after downloading.
             </p>
@@ -492,8 +491,8 @@ export default function ScanFillPage() {
               <button
                 onClick={exportFilledPdf}
                 disabled={exporting}
-                className="flex-1 min-w-[200px] py-2.5 bg-[#6E885B] text-white rounded-xl text-sm
-                  font-semibold hover:bg-[#5C744B] disabled:opacity-50 transition-colors shadow-sm"
+                className="flex-1 min-w-[200px] py-2.5 bg-[#15803D] text-white rounded-xl text-sm
+                  font-semibold hover:bg-[#166534] disabled:opacity-50 transition-colors shadow-sm"
               >
                 {exporting ? "Preparing your PDF…" : "Approve & download the filled PDF"}
               </button>
@@ -501,8 +500,8 @@ export default function ScanFillPage() {
               <button
                 onClick={copyAll}
                 disabled={filledFields.length === 0}
-                className="flex-1 min-w-[200px] py-2.5 bg-[#D95D39] text-white rounded-xl text-sm
-                  font-semibold hover:bg-[#C24E2B] disabled:opacity-40 transition-colors shadow-sm"
+                className="flex-1 min-w-[200px] py-2.5 bg-[#2563EB] text-white rounded-xl text-sm
+                  font-semibold hover:bg-[#1D4ED8] disabled:opacity-40 transition-colors shadow-sm"
               >
                 {copiedAll ? "Copied ✓" : "Copy all values"}
               </button>
@@ -511,8 +510,8 @@ export default function ScanFillPage() {
               <button
                 onClick={copyAll}
                 disabled={filledFields.length === 0}
-                className="px-4 py-2.5 border border-[#E5DFD7] rounded-xl text-sm font-medium
-                  text-[#7C6E67] hover:border-[#D95D39] hover:text-[#D95D39] transition-colors
+                className="px-4 py-2.5 border border-[#E6E8EE] rounded-xl text-sm font-medium
+                  text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors
                   bg-white disabled:opacity-40"
               >
                 {copiedAll ? "Copied ✓" : "Copy all values"}
@@ -520,16 +519,16 @@ export default function ScanFillPage() {
             )}
             <button
               onClick={() => setStage("review")}
-              className="px-4 py-2.5 border border-[#E5DFD7] rounded-xl text-sm font-medium
-                text-[#7C6E67] hover:border-[#D95D39] hover:text-[#D95D39] transition-colors bg-white"
+              className="px-4 py-2.5 border border-[#E6E8EE] rounded-xl text-sm font-medium
+                text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors bg-white"
             >
               Back to edit
             </button>
           </div>
 
           {!hasFillablePdf && (
-            <p className="mt-3 text-xs text-[#7C6E67]/80">
-              This form has no fillable PDF fields, so NEXUS can&apos;t produce a completed copy —
+            <p className="mt-3 text-xs text-[#64748B]/80">
+              This form has no fillable PDF fields, so NEXUS can&apos;t produce a completed copy.
               copy the values above into the form instead.
             </p>
           )}
@@ -537,20 +536,20 @@ export default function ScanFillPage() {
       )}
 
       {stage === "done" && (
-        <div className="mt-5 rounded-2xl border border-[#E1EAD8] bg-[#F3F6F1] p-6">
+        <div className="mt-5 rounded-2xl border border-[#BBF7D0] bg-[#F0FDF4] p-6">
           <div className="text-center">
             <p className="text-2xl">✓</p>
-            <p className="text-sm font-semibold text-[#4A5D3D] mt-2">
+            <p className="text-sm font-semibold text-[#166534] mt-2">
               Downloaded {fileName}-filled.pdf
             </p>
-            <p className="text-xs text-[#4A5D3D]/80 mt-1">
-              It&apos;s in your downloads folder. NEXUS didn&apos;t submit it anywhere — sending it on is up to you.
+            <p className="text-xs text-[#166534]/80 mt-1">
+              It&apos;s in your downloads folder. Sending it on is up to you.
             </p>
           </div>
 
-          <div className="mt-5 bg-white/70 rounded-xl border border-[#E1EAD8] p-4">
-            <p className="text-xs font-semibold text-[#4A5D3D] uppercase tracking-wider">What next</p>
-            <ul className="mt-2 space-y-1 text-sm text-[#2E2724]">
+          <div className="mt-5 bg-white/70 rounded-xl border border-[#BBF7D0] p-4">
+            <p className="text-xs font-semibold text-[#166534] uppercase tracking-wider">What next</p>
+            <ul className="mt-2 space-y-1 text-sm text-[#1E293B]">
               <li>• Print it and sign where the form asks.</li>
               <li>• Email it or upload it to the portal that requested it.</li>
               <li>• Keep a copy here so you can find it again.</li>
@@ -561,8 +560,8 @@ export default function ScanFillPage() {
             <button
               onClick={saveToDocuments}
               disabled={saveState === "saving" || saveState === "saved"}
-              className="text-sm px-4 py-2 bg-[#6E885B] text-white rounded-xl font-semibold
-                hover:bg-[#5C744B] disabled:opacity-60 transition-colors shadow-sm"
+              className="text-sm px-4 py-2 bg-[#15803D] text-white rounded-xl font-semibold
+                hover:bg-[#166534] disabled:opacity-60 transition-colors shadow-sm"
             >
               {saveState === "saving"
                 ? "Saving to Documents…"
@@ -572,8 +571,8 @@ export default function ScanFillPage() {
             </button>
             <button
               onClick={reset}
-              className="text-sm px-4 py-2 bg-white border border-[#E5DFD7] rounded-xl font-semibold
-                text-[#2E2724] hover:border-[#D95D39] transition-colors"
+              className="text-sm px-4 py-2 bg-white border border-[#E6E8EE] rounded-xl font-semibold
+                text-[#1E293B] hover:border-[#2563EB] transition-colors"
             >
               Fill another form
             </button>
@@ -603,15 +602,15 @@ function Steps({ stage }: { stage: Stage }) {
           <span
             className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
               i === currentIndex
-                ? "bg-[#D95D39] text-white border-[#D95D39]"
+                ? "bg-[#2563EB] text-white border-[#2563EB]"
                 : i < currentIndex
-                ? "bg-[#F3F6F1] text-[#6E885B] border-[#E1EAD8]"
-                : "bg-white text-[#7C6E67]/60 border-[#E5DFD7]"
+                ? "bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0]"
+                : "bg-white text-[#64748B]/60 border-[#E6E8EE]"
             }`}
           >
             {i < currentIndex ? "✓" : i + 1} {step.label}
           </span>
-          {i < steps.length - 1 && <span className="text-[#E5DFD7] text-xs">—</span>}
+          {i < steps.length - 1 && <span className="w-3 h-px bg-[#E6E8EE]" />}
         </div>
       ))}
     </div>

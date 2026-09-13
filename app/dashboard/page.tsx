@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
-import { mergeCategories, type CustomCategoryRow } from "@/lib/categories";
-import { daysLeft, daysLabel, badgeColorFor } from "@/lib/dates";
+import { daysLeft, daysLabel } from "@/lib/dates";
 import { docHealth, LOW_CONFIDENCE_THRESHOLD } from "@/lib/doc-status";
 import { detectConflicts, type ConflictGroup } from "@/lib/conflicts";
 import { geocodeCity, getDailyForecast, bestUpcomingDay, weatherEmoji, type DailyForecast } from "@/lib/weather";
+import { DocumentsIcon, ChatIcon, ScanIcon, CheckSquareIcon } from "@/components/icons";
 import { useCallback, useEffect, useState } from "react";
 
 type Deadline = {
@@ -20,8 +20,20 @@ type Deadline = {
 type DocRow = {
   id: string;
   file_name: string;
+  doc_type: string | null;
   doc_category: string | null;
   status: string;
+  uploaded_at: string;
+};
+
+type Attention = {
+  key: string;
+  icon: string;
+  title: string;
+  detail: string;
+  action: string;
+  tone: "blue" | "amber" | "rose";
+  onAction: () => void;
 };
 
 function greeting(): string {
@@ -34,15 +46,12 @@ function greeting(): string {
 export default function DashboardPage() {
   const [supabase] = useState(() => createClient());
   const router = useRouter();
-  const [name, setName] = useState("User");
+  const [name, setName] = useState("");
   const [docs, setDocs] = useState<DocRow[]>([]);
-  const [fieldsCount, setFieldsCount] = useState(0);
   const [needsReviewIds, setNeedsReviewIds] = useState<Set<string>>(new Set());
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
-  const [customCategories, setCustomCategories] = useState<CustomCategoryRow[]>([]);
   const [conflicts, setConflicts] = useState<ConflictGroup[]>([]);
-  const [askInput, setAskInput] = useState("");
   const [city, setCity] = useState("");
   const [agentPermission, setAgentPermission] = useState("recommend");
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -56,7 +65,6 @@ export default function DashboardPage() {
   const [addedToCalendar, setAddedToCalendar] = useState(false);
   const [calendarError, setCalendarError] = useState("");
 
-  const categories = mergeCategories(customCategories);
   const docFileNames = new Map(docs.map((d) => [d.id, d.file_name]));
 
   useEffect(() => {
@@ -66,17 +74,15 @@ export default function DashboardPage() {
         setName(user.user_metadata?.full_name?.split(" ")[0] || "there");
       }
 
-      const [{ data: docRows }, { count: fields }, { count: openTasks }, { data: deadlineRows }, { data: catRows }, { data: fieldRows }, { data: profile }] =
+      const [{ data: docRows }, { count: openTasks }, { data: deadlineRows }, { data: fieldRows }, { data: profile }] =
         await Promise.all([
-          supabase.from("documents").select("id, file_name, doc_category, status"),
-          supabase.from("document_fields").select("*", { count: "exact", head: true }),
+          supabase.from("documents").select("id, file_name, doc_type, doc_category, status, uploaded_at").order("uploaded_at", { ascending: false }),
           supabase.from("tasks").select("*", { count: "exact", head: true }).eq("done", false),
           supabase
             .from("deadlines")
             .select("id, title, expiry_date, document_id")
             .eq("status", "active")
             .order("expiry_date", { ascending: true }),
-          supabase.from("custom_categories").select("name, icon").order("created_at", { ascending: true }),
           supabase.from("document_fields").select("document_id, field_name, field_value, confidence"),
           user
             ? supabase.from("profiles").select("city, agent_permission").eq("id", user.id).single()
@@ -84,10 +90,8 @@ export default function DashboardPage() {
         ]);
 
       setDocs(docRows || []);
-      setFieldsCount(fields || 0);
       setOpenTasksCount(openTasks || 0);
       setDeadlines(deadlineRows || []);
-      setCustomCategories(catRows || []);
       setConflicts(detectConflicts(fieldRows || []));
 
       const review = new Set<string>();
@@ -114,7 +118,7 @@ export default function DashboardPage() {
     try {
       const geo = await geocodeCity(city);
       if (!geo) {
-        setWeatherError(`Couldn't find a place called "${city}". Check the spelling in Settings.`);
+        setWeatherError(`Couldn't find "${city}". Check the spelling in Settings.`);
         setWeatherState("error");
         return;
       }
@@ -153,23 +157,15 @@ export default function DashboardPage() {
     deadlinesByDoc.set(d.document_id, list);
   }
 
-  const docsNeedingAttention = docs.filter((doc) => {
+  const docsNeedingReview = docs.filter((doc) => {
     const key = docHealth({
       status: doc.status,
       lowConfidenceCount: needsReviewIds.has(doc.id) ? 1 : 0,
       expiryDates: deadlinesByDoc.get(doc.id) || [],
     }).key;
-    return key === "expired" || key === "expiring" || key === "needs_review";
+    return key === "needs_review";
   });
 
-  const stillReadingCount = docs.filter(
-    (d) => d.status === "processing" || d.status === "uploaded"
-  ).length;
-  const verifiedCount = docs.length - docsNeedingAttention.length - stillReadingCount;
-  const attentionCount = docsNeedingAttention.length + conflicts.length;
-
-  // Suggest a day before the deadline when it falls inside the forecast; if it
-  // has already passed (or is further out than the forecast) any good day will do.
   const forecastWithinWindow =
     nearestDays !== null && nearestDays >= 0
       ? forecast.filter((_, i) => i <= Math.min(nearestDays, forecast.length - 1))
@@ -177,9 +173,8 @@ export default function DashboardPage() {
   const suggestedDay = bestUpcomingDay(forecastWithinWindow);
   const canExecute = agentPermission === "execute";
 
-  function goAsk(question?: string) {
-    const q = (question ?? askInput).trim();
-    router.push(q ? `/dashboard/ask?q=${encodeURIComponent(q)}` : "/dashboard/ask");
+  function goAsk(question: string) {
+    router.push(`/dashboard/ask?q=${encodeURIComponent(question)}`);
   }
 
   async function addToCalendar() {
@@ -208,275 +203,169 @@ export default function DashboardPage() {
     }
   }
 
-  const summary =
-    docs.length === 0
-      ? "Upload your first document and NEXUS will start keeping track for you."
-      : attentionCount === 0
-      ? "Aaj kuch pending nahi hai. Everything's in order."
-      : attentionCount === 1
-      ? "1 thing needs your attention."
-      : `${attentionCount} things need your attention.`;
+  // The two most pressing things, in priority order: a contradiction first,
+  // then the soonest expiry, then a document waiting on the user.
+  const attention: Attention[] = [];
+  if (conflicts.length > 0) {
+    const c = conflicts[0];
+    attention.push({
+      key: "conflict",
+      icon: "⚠️",
+      tone: "rose",
+      title: `${c.label} doesn't match`,
+      detail: c.entries.map((e) => docFileNames.get(e.document_id) || "Unknown").join(" vs "),
+      action: "Resolve",
+      onAction: () => goAsk(`What is my correct ${c.label.toLowerCase()}?`),
+    });
+  }
+  for (const d of deadlines) {
+    if (attention.length >= 2) break;
+    const days = daysLeft(d.expiry_date);
+    if (days > 30) break;
+    attention.push({
+      key: d.id,
+      icon: days < 0 ? "⏰" : "📅",
+      tone: days < 0 ? "rose" : "amber",
+      title: `${d.title} ${days < 0 ? "expired" : "expiring"}`,
+      detail: days < 0 ? `Ended ${daysLabel(days)}` : `Ends in ${daysLabel(days)}`,
+      action: "Renew",
+      onAction: () => router.push("/dashboard/reminders"),
+    });
+  }
+  if (attention.length < 2 && docsNeedingReview.length > 0) {
+    const doc = docsNeedingReview[0];
+    attention.push({
+      key: doc.id,
+      icon: "🔍",
+      tone: "blue",
+      title: "Details to confirm",
+      detail: doc.file_name,
+      action: "Review",
+      onAction: () => router.push(`/dashboard/documents/${doc.id}`),
+    });
+  }
+
+  const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
   return (
-    <div className="max-w-6xl animate-fade-in-up">
-      <h1 className="text-3xl font-serif font-semibold tracking-tight text-[#1A1412]">
-        {greeting()}, {name} 👋
+    <div className="animate-fade-in-up">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#64748B]">{today}</p>
+      <h1 className="text-4xl font-semibold tracking-tight text-[#0F172A] mt-2">
+        {greeting()}, {name || "there"}.
       </h1>
-      <p className="text-[#7C6E67] mt-1 text-sm">{summary}</p>
 
-      {/* Ask NEXUS is the core of the product, so it sits first and full-width. */}
-      <section className="mt-5 rounded-2xl border border-[#E5DFD7] bg-white p-5 shadow-sm shadow-[#D95D39]/5">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <h2 className="text-base font-serif font-semibold text-[#1A1412] flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-[#D95D39] text-white flex items-center justify-center text-sm">💬</span>
-              Ask NEXUS
-            </h2>
-            <p className="text-xs text-[#7C6E67] mt-1">
-              Ask anything about your documents — numbers, expiry dates, what you need for a task.
-              Answers come from what you&apos;ve uploaded, with the source shown.
-            </p>
-          </div>
-          <Link href="/dashboard/ask" className="text-xs text-[#D95D39] hover:underline font-semibold">
-            Open full chat →
-          </Link>
+      <p className="text-sm text-[#64748B] mt-6 mb-3">What needs your attention</p>
+      {attention.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-[#E6E8EE] px-5 py-4 flex items-center gap-3">
+          <span className="w-9 h-9 rounded-full bg-[#F0FDF4] text-[#15803D] flex items-center justify-center">✓</span>
+          <p className="text-sm text-[#1E293B]">
+            {docs.length === 0 ? "Nothing yet. Add your first document to get started." : "Nothing pending. Everything is in order."}
+          </p>
+          {docs.length === 0 && (
+            <Link href="/dashboard/documents" className="ml-auto px-4 py-2 rounded-full bg-[#2563EB] text-white text-sm font-semibold hover:bg-[#1D4ED8]">
+              Add document
+            </Link>
+          )}
         </div>
-        <div className="mt-3 flex gap-2">
-          <input
-            type="text"
-            value={askInput}
-            onChange={(e) => setAskInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && goAsk()}
-            placeholder="Ask NEXUS… e.g. When does my car insurance expire?"
-            className="flex-1 px-4 py-2.5 bg-[#FCFAF7] border border-[#E5DFD7]
-              rounded-xl text-sm focus:outline-none focus:ring-2
-              focus:ring-[#D95D39] focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
-          />
-          <button
-            onClick={() => goAsk()}
-            className="px-4 py-2.5 bg-[#D95D39] text-white rounded-xl hover:bg-[#C24E2B] transition-colors text-sm font-semibold"
-          >
-            Ask
-          </button>
-        </div>
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {[
-            "What's my passport number?",
-            "When does my insurance expire?",
-            "What do I need for a car loan?",
-            "Documents expiring this month?",
-          ].map((q) => (
-            <button
-              key={q}
-              onClick={() => goAsk(q)}
-              className="text-[11px] px-2.5 py-1 rounded-full border border-[#E5DFD7] text-[#7C6E67]
-                hover:border-[#D95D39] hover:text-[#D95D39] transition-colors bg-white"
-            >
-              {q}
-            </button>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {attention.map((a, i) => (
+            <AttentionCard key={a.key} item={a} primary={i === 0} />
           ))}
         </div>
-        <p className="mt-2.5 text-[11px] text-[#7C6E67]/70">
-          You can also speak, or send a photo of a document, from the full chat.
-        </p>
-      </section>
+      )}
 
-      {/* The single most important thing, chosen over everything else on the page. */}
-      {conflicts.length > 0 ? (
-        <AttentionCard
-          tone="urgent"
-          eyebrow="Conflicting information"
-          title={`Two documents disagree on your ${conflicts[0].label.toLowerCase()}`}
-          detail={conflicts[0].entries
-            .map((e) => `"${e.value}" (${docFileNames.get(e.document_id) || "Unknown"})`)
-            .join(" vs ")}
-          actionLabel="Resolve with NEXUS"
-          onAction={() => goAsk(`What is my correct ${conflicts[0].label.toLowerCase()}?`)}
-        />
-      ) : nearestDeadline && nearestDays !== null && nearestDays <= 30 ? (
-        <AttentionCard
-          tone={nearestDays < 0 ? "urgent" : "warning"}
-          eyebrow={nearestDays < 0 ? "Action needed" : "Expiring soon"}
-          title={`Your ${nearestDeadline.title} ${nearestDays < 0 ? "has expired" : `expires in ${daysLabel(nearestDays)}`}`}
-          detail={`From ${docFileNames.get(nearestDeadline.document_id) || "your documents"} · ${new Date(nearestDeadline.expiry_date).toLocaleDateString()}`}
-          actionLabel="Plan this renewal"
-          onAction={() => router.push("/dashboard/reminders")}
-        />
-      ) : docsNeedingAttention.length > 0 ? (
-        <AttentionCard
-          tone="warning"
-          eyebrow="Needs review"
-          title={`NEXUS wasn't sure about ${docsNeedingAttention[0].file_name}`}
-          detail="Check the details it pulled out and confirm or correct them."
-          actionLabel="Review it"
-          onAction={() => router.push(`/dashboard/documents/${docsNeedingAttention[0].id}`)}
-        />
-      ) : null}
-
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <QuickAction label="Upload a document" icon="📄" href="/dashboard/documents" />
-        <QuickAction label="Fill a form" icon="🖊️" href="/dashboard/scan" />
-        <QuickAction label="See reminders" icon="🔔" href="/dashboard/reminders" />
-        <QuickAction label="Add a task" icon="✓" href="/dashboard/tasks" />
-      </div>
-
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 space-y-6">
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-serif font-semibold text-[#1A1412]">Coming up</h2>
-              <Link href="/dashboard/reminders" className="text-xs text-[#D95D39] hover:underline font-medium">
-                View all →
-              </Link>
-            </div>
-            <div className="bg-white rounded-2xl border border-[#E5DFD7] divide-y divide-[#E5DFD7]/50">
-              {deadlines.length === 0 ? (
-                <p className="px-4 py-6 text-sm text-[#7C6E67]/60 text-center">
-                  Nothing on the horizon. NEXUS will surface expiry dates it finds in your documents here.
-                </p>
-              ) : (
-                deadlines.slice(0, 5).map((d) => {
-                  const days = daysLeft(d.expiry_date);
-                  return (
-                    <div key={d.id} className="flex items-center justify-between px-4 py-3
-                      hover:bg-[#FCFAF7] transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-2 h-2 rounded-full bg-[#E5DFD7] shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-[#2E2724] truncate">{d.title}</p>
-                          <p className="text-xs text-[#7C6E67]">
-                            Expires on {new Date(d.expiry_date).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <span className={`text-[11px] px-2 py-1 rounded-full font-medium shrink-0 ${badgeColorFor(days)}`}>
-                        {daysLabel(days)}
-                      </span>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </section>
-
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-serif font-semibold text-[#1A1412]">Your documents</h2>
-              <Link href="/dashboard/documents" className="text-xs text-[#D95D39] hover:underline font-medium">
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-[1.9fr_1fr] gap-4 items-start">
+        <div className="space-y-4">
+          <section className="bg-white rounded-2xl border border-[#E6E8EE]">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3">
+              <h2 className="text-base font-semibold text-[#0F172A]">Coming up</h2>
+              <Link href="/dashboard/reminders" className="text-xs px-3 py-1.5 rounded-full border border-[#E6E8EE] text-[#1E293B] font-medium hover:bg-[#F8FAFC]">
                 View all
               </Link>
             </div>
 
-            {docs.length > 0 && (
-              <p className="text-xs text-[#7C6E67] mb-3">
-                {docs.length} document{docs.length === 1 ? "" : "s"} → {verifiedCount} verified
-                {docsNeedingAttention.length > 0 && `, ${docsNeedingAttention.length} need${docsNeedingAttention.length === 1 ? "s" : ""} attention`}
-                {stillReadingCount > 0 && `, ${stillReadingCount} still being read`}
-                {fieldsCount > 0 && ` · NEXUS knows ${fieldsCount} detail${fieldsCount === 1 ? "" : "s"} from them`}
+            {deadlines.length === 0 ? (
+              <p className="px-5 pb-6 text-sm text-[#64748B]">
+                No dates on the horizon. Expiry dates from your documents show up here.
               </p>
+            ) : (
+              <ul className="divide-y divide-[#E6E8EE]/70">
+                {deadlines.slice(0, 4).map((d) => {
+                  const days = daysLeft(d.expiry_date);
+                  const date = new Date(d.expiry_date);
+                  return (
+                    <li key={d.id} className="grid grid-cols-[64px_1fr_auto] items-center gap-4 px-5 py-3.5">
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-[#0F172A] leading-tight">{date.getDate()}</p>
+                        <p className="text-[11px] text-[#64748B] uppercase">{date.toLocaleDateString(undefined, { month: "short" })}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[#0F172A] truncate">{d.title}</p>
+                        <p className="text-xs text-[#64748B] truncate">{docFileNames.get(d.document_id) || "Your documents"}</p>
+                      </div>
+                      <span className={`text-xs font-medium ${days < 0 ? "text-[#DB2777]" : days <= 14 ? "text-[#D97706]" : "text-[#64748B]"}`}>
+                        {daysLabel(days)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {categories.map((cat) => (
-                <Link
-                  key={cat.name}
-                  href={`/dashboard/documents?category=${encodeURIComponent(cat.name)}`}
-                  className="bg-white rounded-2xl border border-[#E5DFD7] p-4 text-center
-                    hover:border-[#D95D39] hover:-translate-y-1 hover:shadow-lg hover:shadow-[#D95D39]/5 transition-all duration-300 cursor-pointer"
-                >
-                  <div className={`w-10 h-10 rounded-xl ${cat.color} flex items-center
-                    justify-center text-lg mx-auto`}>
-                    {cat.icon}
-                  </div>
-                  <p className="text-xs font-semibold text-[#2E2724] mt-2.5">{cat.name}</p>
-                  <p className="text-[11px] text-[#7C6E67] mt-0.5">
-                    {docs.filter((d) => d.doc_category === cat.name).length} docs
-                  </p>
-                </Link>
-              ))}
-            </div>
+            {nearestDeadline && nearestDays !== null && nearestDays <= 30 && (
+              <div className="mx-5 mb-5 mt-2 rounded-xl bg-[#F8FAFC] border border-[#E6E8EE] px-4 py-3 flex items-center gap-3 flex-wrap">
+                <span className="w-7 h-7 rounded-full bg-[#EAF2FF] text-[#2563EB] flex items-center justify-center text-sm shrink-0">✦</span>
+                <p className="text-sm text-[#1E293B] flex-1 min-w-[200px]">
+                  {suggestedDay
+                    ? <>NEXUS suggests <span className="font-semibold">{new Date(`${suggestedDay.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" })}</span> for the {nearestDeadline.title.toLowerCase()} renewal. {suggestedDay.description}, {suggestedDay.precipProbability}% rain.</>
+                    : weatherState === "loading"
+                    ? <>Checking the forecast for a good day…</>
+                    : weatherState === "error"
+                    ? <>Forecast unavailable, so no day suggested yet. <button onClick={loadWeather} className="text-[#2563EB] font-medium">Retry</button></>
+                    : <><Link href="/dashboard/settings" className="text-[#2563EB] font-medium">Add your city</Link> and NEXUS will pick a good day for this.</>}
+                </p>
+                {suggestedDay && (
+                  calendarConnected && canExecute ? (
+                    addedToCalendar ? (
+                      addedLink
+                        ? <a href={addedLink} target="_blank" rel="noreferrer" className="text-xs px-3 py-1.5 rounded-full bg-[#F0FDF4] text-[#15803D] font-semibold">Added ✓ Open</a>
+                        : <span className="text-xs px-3 py-1.5 rounded-full bg-[#F0FDF4] text-[#15803D] font-semibold">Added ✓</span>
+                    ) : (
+                      <button onClick={addToCalendar} disabled={addingToCalendar} className="text-xs px-3 py-1.5 rounded-full border border-[#E6E8EE] bg-white text-[#1E293B] font-semibold hover:bg-[#F8FAFC] disabled:opacity-50">
+                        {addingToCalendar ? "Adding…" : "Add to calendar"}
+                      </button>
+                    )
+                  ) : (
+                    <button onClick={() => goAsk(`What do I need to renew my ${nearestDeadline.title}?`)} className="text-xs px-3 py-1.5 rounded-full border border-[#E6E8EE] bg-white text-[#1E293B] font-semibold hover:bg-[#F8FAFC]">
+                      Ask NEXUS
+                    </button>
+                  )
+                )}
+                {calendarError && <p className="w-full text-xs text-[#DB2777]">{calendarError}</p>}
+              </div>
+            )}
           </section>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Tile href="/dashboard/documents" label="Scan" icon={<DocumentsIcon className="w-5 h-5" />} />
+            <Tile href="/dashboard/ask" label="Ask" icon={<ChatIcon className="w-5 h-5" />} />
+            <Tile href="/dashboard/tasks" label="Add" icon={<span className="text-lg leading-none">+</span>} />
+            <Tile href="/dashboard/scan" label="Fill" icon={<ScanIcon className="w-5 h-5" />} />
+          </div>
+
+          {openTasksCount > 0 && (
+            <Link href="/dashboard/tasks" className="flex items-center gap-3 bg-white rounded-2xl border border-[#E6E8EE] px-5 py-4 hover:border-[#2563EB]/40 transition-colors">
+              <CheckSquareIcon className="w-5 h-5 text-[#2563EB]" />
+              <p className="text-sm font-semibold text-[#1E293B]">
+                {openTasksCount} open task{openTasksCount === 1 ? "" : "s"}
+              </p>
+              <span className="ml-auto text-xs text-[#64748B]">View</span>
+            </Link>
+          )}
         </div>
 
-        <div className="lg:col-span-2 space-y-6">
-          {nearestDeadline && nearestDays !== null && nearestDays <= 14 && (
-            <div className="rounded-2xl border border-[#E5DFD7] overflow-hidden bg-[#FAF8F5]">
-              <div className="p-4 border-b border-[#E5DFD7]/60">
-                <h3 className="text-sm font-semibold text-[#D95D39] flex items-center gap-2">
-                  ✨ NEXUS suggests
-                </h3>
-              </div>
-              <div className="p-4">
-                {suggestedDay ? (
-                  <p className="text-sm text-[#2E2724]">
-                    {new Date(suggestedDay.date).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" })} looks
-                    like the easiest day to sort this out in {city} — {suggestedDay.description.toLowerCase()},{" "}
-                    {suggestedDay.tempMin}–{suggestedDay.tempMax}°C, {suggestedDay.precipProbability}% chance of rain.
-                  </p>
-                ) : weatherState === "loading" ? (
-                  <p className="text-sm text-[#7C6E67]">Checking the forecast for {city}&hellip;</p>
-                ) : weatherState === "error" ? (
-                  <p className="text-sm text-[#7C6E67]">
-                    The forecast isn&apos;t available right now, so NEXUS can&apos;t suggest a day yet.{" "}
-                    <button onClick={loadWeather} className="text-[#D95D39] hover:underline font-medium">Try again</button>
-                  </p>
-                ) : (
-                  <p className="text-sm text-[#7C6E67]">
-                    <Link href="/dashboard/settings" className="text-[#D95D39] hover:underline font-medium">
-                      Add your city
-                    </Link>{" "}
-                    and NEXUS will pick a good-weather day for this.
-                  </p>
-                )}
-
-                <div className="mt-4 space-y-2">
-                  <button
-                    onClick={() => goAsk(`What do I need to renew my ${nearestDeadline.title}?`)}
-                    className="w-full py-2 bg-[#D95D39] text-white rounded-xl text-sm
-                      font-medium hover:bg-[#C24E2B] transition-colors shadow-sm"
-                  >
-                    Ask NEXUS about it
-                  </button>
-
-                  {calendarConnected && suggestedDay && (
-                    canExecute ? (
-                      <button
-                        onClick={addToCalendar}
-                        disabled={addingToCalendar || addedToCalendar}
-                        className="w-full py-2 border border-[#E5DFD7] text-[#2E2724] rounded-xl text-sm
-                          font-medium hover:bg-[#FAF8F5] transition-colors bg-white disabled:opacity-60"
-                      >
-                        {addedToCalendar ? "Added to Calendar ✓" : addingToCalendar ? "Adding..." : "Add to Google Calendar"}
-                      </button>
-                    ) : (
-                      <p className="text-[11px] text-[#7C6E67] leading-relaxed">
-                        NEXUS can add this to your calendar once you allow it to act.{" "}
-                        <Link href="/dashboard/settings" className="text-[#D95D39] hover:underline font-medium">
-                          Change in Settings
-                        </Link>
-                      </p>
-                    )
-                  )}
-
-                  {addedToCalendar && addedLink && (
-                    <a
-                      href={addedLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block text-center text-[11px] text-[#D95D39] hover:underline font-medium"
-                    >
-                      Open it in Google Calendar →
-                    </a>
-                  )}
-
-                  {calendarError && (
-                    <p className="text-[11px] text-red-600">{calendarError}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
+        <div className="space-y-4">
           <WeatherCard
             city={city}
             label={weatherLabel}
@@ -486,63 +375,84 @@ export default function DashboardPage() {
             onRetry={loadWeather}
           />
 
-          {openTasksCount > 0 && (
-            <Link
-              href="/dashboard/tasks"
-              className="block bg-white rounded-2xl border border-[#E5DFD7] p-4
-                hover:border-[#D95D39] transition-colors"
-            >
-              <p className="text-sm font-semibold text-[#2E2724]">
-                {openTasksCount} open task{openTasksCount === 1 ? "" : "s"}
+          <section className="bg-white rounded-2xl border border-[#E6E8EE] p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-[#0F172A]">Documents</h2>
+              <Link href="/dashboard/documents" className="text-xs px-3 py-1.5 rounded-full border border-[#E6E8EE] text-[#1E293B] font-medium hover:bg-[#F8FAFC]">
+                View all
+              </Link>
+            </div>
+            {docs.length === 0 ? (
+              <p className="mt-3 text-sm text-[#64748B]">Nothing uploaded yet.</p>
+            ) : (
+              <ul className="mt-3 space-y-3">
+                {docs.slice(0, 3).map((doc) => (
+                  <li key={doc.id}>
+                    <Link href={`/dashboard/documents/${doc.id}`} className="flex items-center gap-3 group">
+                      <span className="w-9 h-9 rounded-lg bg-[#EAF2FF] text-[#2563EB] flex items-center justify-center text-sm shrink-0">
+                        {doc.file_name.toLowerCase().endsWith(".pdf") ? "📄" : "🖼️"}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[#0F172A] truncate group-hover:text-[#2563EB]">{doc.file_name}</p>
+                        <p className="text-xs text-[#64748B] truncate capitalize">{(doc.doc_type || doc.doc_category || "Document").replace(/_/g, " ")}</p>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="bg-[#F8FAFC] rounded-2xl border border-[#E6E8EE] p-5 flex gap-3">
+            <span className="w-9 h-9 rounded-full bg-[#0F172A] text-white flex items-center justify-center text-sm shrink-0">🔒</span>
+            <div>
+              <p className="text-sm font-semibold text-[#0F172A]">Private by default</p>
+              <p className="text-xs text-[#64748B] mt-0.5 leading-relaxed">
+                Sensitive numbers stay masked until you tap them. NEXUS acts only after you approve.
               </p>
-              <p className="text-xs text-[#7C6E67] mt-0.5">Things you decided to handle yourself →</p>
-            </Link>
-          )}
+            </div>
+          </section>
         </div>
       </div>
     </div>
   );
 }
 
-function AttentionCard({ tone, eyebrow, title, detail, actionLabel, onAction }: {
-  tone: "urgent" | "warning";
-  eyebrow: string;
-  title: string;
-  detail: string;
-  actionLabel: string;
-  onAction: () => void;
-}) {
-  const styles = tone === "urgent"
-    ? { wrap: "border-[#F5DFD6] bg-[#FDF2EE]", eyebrow: "text-[#D95D39]" }
-    : { wrap: "border-[#FBEAC9] bg-[#FEF9EC]", eyebrow: "text-[#B9832A]" };
-
+function AttentionCard({ item, primary }: { item: Attention; primary: boolean }) {
+  const { icon, title, detail, action, tone, onAction } = item;
+  const tones = {
+    blue: "bg-[#EAF2FF] text-[#2563EB]",
+    amber: "bg-[#FFFBEB] text-[#D97706]",
+    rose: "bg-[#FDF2F8] text-[#DB2777]",
+  };
   return (
-    <div className={`mt-5 rounded-2xl border p-5 ${styles.wrap}`}>
-      <p className={`text-[11px] font-semibold uppercase tracking-wider ${styles.eyebrow}`}>
-        {eyebrow}
-      </p>
-      <p className="text-base font-semibold text-[#1A1412] mt-1.5">{title}</p>
-      <p className="text-sm text-[#7C6E67] mt-1">{detail}</p>
+    <div className="bg-white rounded-2xl border border-[#E6E8EE] px-5 py-4 flex items-center gap-4">
+      <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${tones[tone]}`}>{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-[#0F172A] truncate">{title}</p>
+        <p className="text-xs text-[#64748B] truncate">{detail}</p>
+      </div>
       <button
         onClick={onAction}
-        className="mt-4 px-4 py-2 bg-[#D95D39] text-white rounded-xl text-sm font-semibold
-          hover:bg-[#C24E2B] transition-colors shadow-sm"
+        className={`text-sm px-4 py-2 rounded-full font-semibold transition-colors shrink-0 ${
+          primary ? "bg-[#2563EB] text-white hover:bg-[#1D4ED8]" : "border border-[#E6E8EE] text-[#1E293B] hover:bg-[#F8FAFC]"
+        }`}
       >
-        {actionLabel}
+        {action}
       </button>
     </div>
   );
 }
 
-function QuickAction({ label, icon, href }: { label: string; icon: string; href: string }) {
+function Tile({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) {
   return (
     <Link
       href={href}
-      className="bg-white rounded-2xl border border-[#E5DFD7] px-4 py-3.5 flex items-center gap-2.5
-        hover:border-[#D95D39] hover:-translate-y-0.5 transition-all duration-200"
+      className="bg-white rounded-2xl border border-[#E6E8EE] py-5 flex flex-col items-center gap-3
+        hover:border-[#2563EB]/40 hover:-translate-y-0.5 transition-all"
     >
-      <span className="text-lg">{icon}</span>
-      <span className="text-sm font-semibold text-[#2E2724]">{label}</span>
+      <span className="w-11 h-11 rounded-full bg-[#EAF2FF] text-[#2563EB] flex items-center justify-center">{icon}</span>
+      <span className="text-sm font-medium text-[#0F172A]">{label}</span>
     </Link>
   );
 }
@@ -559,105 +469,70 @@ function WeatherCard({ city, label, state, error, forecast, onRetry }: {
   const best = bestUpcomingDay(forecast.slice(1));
 
   return (
-    <div className="bg-white rounded-2xl border border-[#E5DFD7] overflow-hidden">
-      <div className="p-4 border-b border-[#E5DFD7]/60 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-[#1A1412]">
-          {state === "ready" && label ? `Weather in ${label.split(",")[0]}` : "Weather"}
-        </h3>
+    <section className="bg-white rounded-2xl border border-[#E6E8EE] p-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold text-[#0F172A]">
+          {state === "ready" && label ? label.split(",")[0] : "Weather"}
+        </h2>
         {state === "ready" && (
-          <button onClick={onRetry} className="text-[11px] text-[#7C6E67] hover:text-[#D95D39]" title="Refresh">
-            ↻
-          </button>
+          <button onClick={onRetry} className="text-xs text-[#64748B] hover:text-[#2563EB]" title="Refresh">↻</button>
         )}
       </div>
-      <div className="p-4">
-        {state === "idle" && (
-          <p className="text-sm text-[#7C6E67]">
-            <Link href="/dashboard/settings" className="text-[#D95D39] hover:underline font-medium">
-              Add your city
-            </Link>{" "}
-            and NEXUS will show the local forecast and pick good days for errands.
-          </p>
-        )}
 
-        {state === "loading" && (
-          <div className="animate-pulse space-y-2.5" aria-label="Loading forecast">
-            <div className="h-7 w-2/3 rounded-lg bg-[#F4EFEA]" />
-            <div className="h-3.5 w-1/2 rounded bg-[#F4EFEA]" />
-            <div className="flex gap-2 mt-3">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex-1 h-12 rounded-xl bg-[#F4EFEA]" />
-              ))}
-            </div>
-            <p className="text-[11px] text-[#7C6E67]/70">Checking the forecast for {city}…</p>
+      {state === "idle" && (
+        <p className="mt-3 text-sm text-[#64748B]">
+          <Link href="/dashboard/settings" className="text-[#2563EB] font-medium">Add your city</Link> for the local forecast.
+        </p>
+      )}
+
+      {state === "loading" && (
+        <div className="mt-3 animate-pulse space-y-2.5" aria-label="Loading forecast">
+          <div className="h-7 w-2/3 rounded-lg bg-[#F1F5F9]" />
+          <div className="h-3.5 w-1/2 rounded bg-[#F1F5F9]" />
+          <div className="flex gap-2 mt-3">
+            {[0, 1, 2, 3, 4].map((i) => <div key={i} className="flex-1 h-12 rounded-xl bg-[#F1F5F9]" />)}
           </div>
-        )}
+          <p className="text-[11px] text-[#64748B]/70">Checking {city}…</p>
+        </div>
+      )}
 
-        {state === "error" && (
-          <div>
-            <p className="text-sm text-[#2E2724] font-medium">Forecast unavailable</p>
-            <p className="text-xs text-[#7C6E67] mt-1">{error}</p>
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={onRetry}
-                className="text-xs px-3 py-1.5 bg-[#D95D39] text-white rounded-lg font-semibold hover:bg-[#C24E2B]"
-              >
-                Try again
-              </button>
-              <Link
-                href="/dashboard/settings"
-                className="text-xs px-3 py-1.5 border border-[#E5DFD7] rounded-lg font-semibold text-[#2E2724] hover:border-[#D95D39]"
-              >
-                Change city
-              </Link>
+      {state === "error" && (
+        <div className="mt-3">
+          <p className="text-sm text-[#0F172A] font-medium">Forecast unavailable</p>
+          <p className="text-xs text-[#64748B] mt-1">{error}</p>
+          <div className="mt-3 flex gap-2">
+            <button onClick={onRetry} className="text-xs px-3 py-1.5 bg-[#2563EB] text-white rounded-full font-semibold hover:bg-[#1D4ED8]">Try again</button>
+            <Link href="/dashboard/settings" className="text-xs px-3 py-1.5 border border-[#E6E8EE] rounded-full font-semibold text-[#1E293B] hover:bg-[#F8FAFC]">Change city</Link>
+          </div>
+        </div>
+      )}
+
+      {state === "ready" && today && (
+        <div className="mt-3">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl leading-none">{weatherEmoji(today.code)}</span>
+            <div>
+              <p className="text-2xl font-semibold text-[#0F172A] leading-tight">{today.tempMax}°</p>
+              <p className="text-xs text-[#64748B]">{today.description} · {today.precipProbability}% rain</p>
             </div>
           </div>
-        )}
-
-        {state === "ready" && today && (
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="text-3xl leading-none">{weatherEmoji(today.code)}</span>
-              <div>
-                <p className="text-lg font-semibold text-[#1A1412] leading-tight">
-                  {today.tempMin}–{today.tempMax}°C
+          <div className="mt-4 grid grid-cols-5 gap-1.5">
+            {forecast.slice(1, 6).map((day) => (
+              <div
+                key={day.date}
+                className={`rounded-xl px-1 py-2 text-center ${best?.date === day.date ? "bg-[#EAF2FF]" : "bg-[#F8FAFC]"}`}
+                title={`${day.description}, ${day.precipProbability}% rain`}
+              >
+                <p className="text-[10px] font-semibold text-[#64748B]">
+                  {new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short" })}
                 </p>
-                <p className="text-xs text-[#7C6E67]">
-                  {today.description} · {today.precipProbability}% chance of rain today
-                </p>
+                <p className="text-base leading-tight">{weatherEmoji(day.code)}</p>
+                <p className="text-[10px] text-[#1E293B]">{day.tempMax}°</p>
               </div>
-            </div>
-
-            <div className="mt-3 grid grid-cols-5 gap-1.5">
-              {forecast.slice(1, 6).map((day) => (
-                <div
-                  key={day.date}
-                  className={`rounded-xl border px-1 py-2 text-center ${
-                    best?.date === day.date ? "border-[#E1EAD8] bg-[#F3F6F1]" : "border-[#E5DFD7]/70 bg-[#FCFAF7]"
-                  }`}
-                  title={`${day.description}, ${day.precipProbability}% rain`}
-                >
-                  <p className="text-[10px] font-semibold text-[#7C6E67]">
-                    {new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short" })}
-                  </p>
-                  <p className="text-base leading-tight">{weatherEmoji(day.code)}</p>
-                  <p className="text-[10px] text-[#2E2724]">{day.tempMax}°</p>
-                </div>
-              ))}
-            </div>
-
-            {best && (
-              <p className="mt-3 text-[11px] text-[#6E885B]">
-                Best day for errands:{" "}
-                <span className="font-semibold">
-                  {new Date(`${best.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" })}
-                </span>{" "}
-                — {best.description.toLowerCase()}, {best.precipProbability}% rain.
-              </p>
-            )}
+            ))}
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </section>
   );
 }

@@ -43,7 +43,7 @@ export function uploadWithProgress(
       }
       reject(new Error(message));
     };
-    xhr.onerror = () => reject(new Error("Upload failed — check your connection and try again."));
+    xhr.onerror = () => reject(new Error("Upload failed. Check your connection and try again."));
     xhr.onabort = () => reject(new Error("Upload cancelled."));
     xhr.send(file);
   });
