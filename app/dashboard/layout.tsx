@@ -10,14 +10,22 @@ import {
 import { useEffect, useState } from "react";
 
 const navItems = [
-  { href: "/dashboard", icon: HomeIcon, label: "Home" },
-  { href: "/dashboard/documents", icon: DocumentsIcon, label: "Vault" },
-  { href: "/dashboard/ask", icon: ChatIcon, label: "Ask NEXUS" },
-  { href: "/dashboard/scan", icon: ScanIcon, label: "Scan & Fill" },
-  { href: "/dashboard/reminders", icon: BellIcon, label: "Reminders" },
-  { href: "/dashboard/tasks", icon: CheckSquareIcon, label: "Tasks" },
-  { href: "/dashboard/activity", icon: ActivityIcon, label: "Activity" },
+  { href: "/dashboard", icon: HomeIcon, label: "Home", short: "Home" },
+  { href: "/dashboard/documents", icon: DocumentsIcon, label: "Vault", short: "Vault" },
+  { href: "/dashboard/ask", icon: ChatIcon, label: "Ask NEXUS", short: "Ask" },
+  { href: "/dashboard/scan", icon: ScanIcon, label: "Scan & Fill", short: "Fill" },
+  { href: "/dashboard/reminders", icon: BellIcon, label: "Reminders", short: "Dates" },
+  { href: "/dashboard/tasks", icon: CheckSquareIcon, label: "Tasks", short: "Tasks" },
+  { href: "/dashboard/activity", icon: ActivityIcon, label: "Activity", short: "Log" },
 ];
+
+function Logo({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 19V5l12 14V5" />
+    </svg>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -58,17 +66,17 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen flex bg-[#F6F7F9]">
-      <aside className="w-[76px] flex flex-col items-center fixed h-full bg-white border-r border-[#E6E8EE] z-20 py-5">
+      <aside className="w-[96px] flex flex-col items-center fixed h-full bg-white border-r border-[#E6E8EE] z-20 py-5">
         <Link
           href="/dashboard"
-          className="w-11 h-11 rounded-2xl bg-[#0F172A] text-white flex items-center justify-center
-            font-bold tracking-tight text-lg"
+          className="w-12 h-12 rounded-2xl bg-[#0F172A] text-white flex items-center justify-center shadow-md shadow-[#0F172A]/15
+            hover:scale-105 transition-transform"
           title="NEXUS"
         >
-          N
+          <Logo className="w-6 h-6" />
         </Link>
 
-        <nav className="flex-1 mt-8 flex flex-col items-center gap-1.5">
+        <nav className="flex-1 mt-6 flex flex-col items-center gap-1 w-full px-3">
           {navItems.map((item) => {
             const isActive = item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href);
             const Icon = item.icon;
@@ -76,41 +84,42 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                title={item.label}
                 aria-label={item.label}
-                className={`group relative w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
+                aria-current={isActive ? "page" : undefined}
+                className={`group w-full rounded-2xl flex flex-col items-center gap-1 py-2.5 transition-all
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] ${
                   isActive
                     ? "bg-[#EAF2FF] text-[#2563EB]"
-                    : "text-[#94A3B8] hover:bg-[#F1F5F9] hover:text-[#1E293B]"
+                    : "text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]"
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                <span className="pointer-events-none absolute left-full ml-3 px-2 py-1 rounded-lg bg-[#0F172A] text-white
-                  text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                  {item.label}
+                <Icon className={`w-6 h-6 transition-transform ${isActive ? "" : "group-hover:-translate-y-0.5"}`} />
+                <span className={`text-[10px] font-semibold tracking-wide ${isActive ? "text-[#2563EB]" : "text-[#94A3B8] group-hover:text-[#0F172A]"}`}>
+                  {item.short}
                 </span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-2 w-full px-3">
           <Link
             href="/dashboard/settings"
-            title="Settings"
-            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
+            aria-label="Settings"
+            className={`w-full rounded-2xl flex flex-col items-center gap-1 py-2.5 transition-colors ${
               pathname.startsWith("/dashboard/settings")
                 ? "bg-[#EAF2FF] text-[#2563EB]"
-                : "text-[#94A3B8] hover:bg-[#F1F5F9] hover:text-[#1E293B]"
+                : "text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]"
             }`}
           >
-            <GearIcon className="w-5 h-5" />
+            <GearIcon className="w-6 h-6" />
+            <span className="text-[10px] font-semibold tracking-wide text-[#94A3B8]">Settings</span>
           </Link>
           <button
             onClick={handleLogout}
             title={`Sign out ${name}`}
-            className="w-9 h-9 rounded-full bg-[#2563EB] text-white text-sm font-semibold flex items-center
-              justify-center hover:bg-[#1D4ED8] transition-colors group relative"
+            className="mt-1 w-11 h-11 rounded-full bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] text-white text-sm font-bold flex items-center
+              justify-center shadow-md shadow-[#2563EB]/25 group relative hover:scale-105 transition-transform"
           >
             {name.charAt(0).toUpperCase() || "·"}
             <span className="absolute inset-0 rounded-full bg-[#0F172A] text-white flex items-center justify-center
@@ -121,17 +130,18 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      <main className="flex-1 min-h-screen ml-[76px]">
+      <main className="flex-1 min-h-screen ml-[96px]">
         <div className={`px-8 pt-8 max-w-6xl mx-auto ${onAskPage ? "pb-8" : "pb-32"}`}>
           {children}
         </div>
 
         {!onAskPage && (
-          <div className="fixed bottom-6 left-[76px] right-0 flex justify-center px-6 pointer-events-none z-30">
+          <div className="fixed bottom-6 left-[96px] right-0 flex justify-center px-6 pointer-events-none z-30">
             <form
               onSubmit={(e) => { e.preventDefault(); submitAsk(); }}
-              className="pointer-events-auto w-full max-w-xl flex items-center gap-2 bg-white rounded-2xl
-                border border-[#E6E8EE] shadow-lg shadow-[#0F172A]/8 pl-4 pr-2 py-2"
+              className="pointer-events-auto w-full max-w-xl flex items-center gap-2 bg-white/95 backdrop-blur rounded-2xl
+                border border-[#E6E8EE] shadow-xl shadow-[#0F172A]/10 pl-4 pr-2 py-2 transition-shadow focus-within:shadow-2xl
+                focus-within:border-[#2563EB]/40"
             >
               <span className="text-[#2563EB]">✦</span>
               <input
