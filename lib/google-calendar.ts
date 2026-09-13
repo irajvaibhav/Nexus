@@ -209,7 +209,14 @@ export async function createCalendarEvent(
       description: event.description || "Created by NEXUS",
       start: { date: event.dateISO },
       end: { date: nextDayISO(event.dateISO) },
-      reminders: { useDefault: true },
+      // A renewal is easy to forget, so remind the day before and a week out.
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: "popup", minutes: 24 * 60 },
+          { method: "email", minutes: 7 * 24 * 60 },
+        ],
+      },
     }),
   });
 
@@ -217,4 +224,41 @@ export async function createCalendarEvent(
     id: String(data.id),
     htmlLink: typeof data.htmlLink === "string" ? data.htmlLink : null,
   };
+}
+
+export type UpcomingEvent = {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  htmlLink: string | null;
+};
+
+export async function listUpcomingEvents(accessToken: string, timeMin: string, timeMax: string): Promise<UpcomingEvent[]> {
+  const params = new URLSearchParams({
+    timeMin,
+    timeMax,
+    singleEvents: "true",
+    orderBy: "startTime",
+    maxResults: "40",
+  });
+  const data = await googleJson(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const items = (data.items as Array<Record<string, unknown>> | undefined) || [];
+  return items
+    .filter((e) => e.status !== "cancelled")
+    .map((e) => {
+      const start = e.start as { date?: string; dateTime?: string } | undefined;
+      const end = e.end as { date?: string; dateTime?: string } | undefined;
+      return {
+        id: String(e.id),
+        title: typeof e.summary === "string" && e.summary ? e.summary : "(No title)",
+        start: start?.dateTime || start?.date || "",
+        end: end?.dateTime || end?.date || "",
+        allDay: Boolean(start?.date && !start?.dateTime),
+        htmlLink: typeof e.htmlLink === "string" ? e.htmlLink : null,
+      };
+    });
 }

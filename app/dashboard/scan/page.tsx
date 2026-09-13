@@ -44,6 +44,8 @@ export default function ScanFillPage() {
   const [hasFillablePdf, setHasFillablePdf] = useState(false);
   const [fileName, setFileName] = useState("form");
   const [fileBase64, setFileBase64] = useState("");
+  const [fileMime, setFileMime] = useState("application/pdf");
+  const [scanStage, setScanStage] = useState(0);
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [copiedAll, setCopiedAll] = useState(false);
   const [filledBase64, setFilledBase64] = useState("");
@@ -76,7 +78,12 @@ export default function ScanFillPage() {
     }
 
     setFileName(file.name.replace(/\.[^.]+$/, ""));
+    setFileMime(file.type);
     setScanning(true);
+    setScanStage(0);
+    // The scan is one request, so stage labels advance on a timer that matches
+    // how long each part usually takes; the last stage holds until it returns.
+    const timers = [setTimeout(() => setScanStage(1), 2500), setTimeout(() => setScanStage(2), 7000)];
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -123,6 +130,7 @@ export default function ScanFillPage() {
       setError("Scan failed. Please try again.");
     }
 
+    timers.forEach(clearTimeout);
     setScanning(false);
   }
 
@@ -170,8 +178,10 @@ export default function ScanFillPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           base64: fileBase64,
+          mimeType: fileMime,
           formName,
           fields: fields.map((f) => ({
+            label: f.label,
             value: f.value.trim() || null,
             found: f.value.trim().length > 0,
             pdf_field_name: f.pdfFieldName,
@@ -288,13 +298,38 @@ export default function ScanFillPage() {
                 : "border-[#E6E8EE] bg-white hover:border-[#2563EB]/50 hover:bg-[#F8FAFC]"
             }`}
         >
-          <ScanIcon className="w-9 h-9 mx-auto mb-3 text-[#2563EB]" />
-          <p className="text-sm font-semibold text-[#1E293B]">
-            {scanning ? "NEXUS is reading your form…" : "Drag & drop a form, or take a photo"}
-          </p>
-          <p className="text-xs text-[#64748B] mt-1">
-            {scanning ? "Finding the fields and matching them to your documents" : "PDF, JPG or PNG, up to 10MB"}
-          </p>
+          {scanning ? (
+            <div className="max-w-sm mx-auto text-left">
+              <div className="flex items-center gap-3 justify-center mb-4">
+                <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#F97316] to-[#DB2777] text-white flex items-center justify-center shadow-md">
+                  <ScanIcon className="w-5 h-5" />
+                </span>
+                <p className="text-sm font-semibold text-[#0F172A]">Reading {fileName}</p>
+              </div>
+              <ol className="space-y-2">
+                {["Reading the form", "Finding every field", "Matching fields to your documents"].map((label, i) => {
+                  const state = i < scanStage ? "done" : i === scanStage ? "active" : "todo";
+                  return (
+                    <li key={label} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${state === "active" ? "bg-[#EAF2FF]" : ""}`}>
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                        state === "done" ? "bg-[#DCFCE7] text-[#15803D]" : state === "active" ? "bg-[#2563EB] text-white" : "bg-[#F1F5F9] text-[#94A3B8]"
+                      }`}>
+                        {state === "done" ? "✓" : state === "active" ? <span className="w-2.5 h-2.5 rounded-full border-[1.5px] border-white border-t-transparent animate-spin" /> : i + 1}
+                      </span>
+                      <span className={`text-sm ${state === "todo" ? "text-[#94A3B8]" : "text-[#0F172A]"}`}>{label}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+              <p className="text-[11px] text-[#94A3B8] text-center mt-3">Usually 10 to 20 seconds.</p>
+            </div>
+          ) : (
+            <>
+              <ScanIcon className="w-9 h-9 mx-auto mb-3 text-[#2563EB]" />
+              <p className="text-sm font-semibold text-[#1E293B]">Drag & drop a form, or take a photo</p>
+              <p className="text-xs text-[#64748B] mt-1">PDF, JPG or PNG, up to 10MB</p>
+            </>
+          )}
 
           {!scanning && (
             <div className="mt-4 flex items-center justify-center gap-2">
@@ -433,8 +468,8 @@ export default function ScanFillPage() {
           </h2>
           <p className="text-xs text-[#64748B] mt-0.5">
             {hasFillablePdf
-              ? "You get this PDF with the values filled in, ready to print, sign or send. NEXUS sends nothing anywhere."
-              : "This form has no fillable fields, so NEXUS gives you the values to copy across instead of a filled file."}
+              ? "You get this PDF with the values written into its fields, ready to print, sign or send. NEXUS sends nothing anywhere."
+              : "This form has no digital fields, so NEXUS gives you a PDF with the original form plus a neat page of the filled-in answers to copy from or attach."}
           </p>
 
           <div className="mt-4 bg-white rounded-2xl border border-[#E6E8EE] p-6">
@@ -487,51 +522,34 @@ export default function ScanFillPage() {
           )}
 
           <div className="mt-5 flex gap-2 flex-wrap">
-            {hasFillablePdf ? (
-              <button
-                onClick={exportFilledPdf}
-                disabled={exporting}
-                className="flex-1 min-w-[200px] py-2.5 bg-[#15803D] text-white rounded-xl text-sm
-                  font-semibold hover:bg-[#166534] disabled:opacity-50 transition-colors shadow-sm"
-              >
-                {exporting ? "Preparing your PDF…" : "Approve & download the filled PDF"}
-              </button>
-            ) : (
-              <button
-                onClick={copyAll}
-                disabled={filledFields.length === 0}
-                className="flex-1 min-w-[200px] py-2.5 bg-[#2563EB] text-white rounded-xl text-sm
-                  font-semibold hover:bg-[#1D4ED8] disabled:opacity-40 transition-colors shadow-sm"
-              >
-                {copiedAll ? "Copied ✓" : "Copy all values"}
-              </button>
-            )}
-            {hasFillablePdf && (
-              <button
-                onClick={copyAll}
-                disabled={filledFields.length === 0}
-                className="px-4 py-2.5 border border-[#E6E8EE] rounded-xl text-sm font-medium
-                  text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors
-                  bg-white disabled:opacity-40"
-              >
-                {copiedAll ? "Copied ✓" : "Copy all values"}
-              </button>
-            )}
+            <button
+              onClick={exportFilledPdf}
+              disabled={exporting}
+              className="flex-1 min-w-[220px] py-2.5 bg-gradient-to-r from-[#16A34A] to-[#0D9488] text-white rounded-full text-sm
+                font-semibold shadow-md shadow-[#16A34A]/25 hover:shadow-lg disabled:opacity-50 transition-shadow inline-flex items-center justify-center gap-2"
+            >
+              {exporting ? (
+                <><span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" /> Preparing your PDF…</>
+              ) : hasFillablePdf ? "Approve & download the filled PDF" : "Approve & download the completed PDF"}
+            </button>
+            <button
+              onClick={copyAll}
+              disabled={filledFields.length === 0}
+              className="px-4 py-2.5 border border-[#E6E8EE] rounded-full text-sm font-medium
+                text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors
+                bg-white disabled:opacity-40"
+            >
+              {copiedAll ? "Copied ✓" : "Copy all values"}
+            </button>
             <button
               onClick={() => setStage("review")}
-              className="px-4 py-2.5 border border-[#E6E8EE] rounded-xl text-sm font-medium
+              className="px-4 py-2.5 border border-[#E6E8EE] rounded-full text-sm font-medium
                 text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB] transition-colors bg-white"
             >
               Back to edit
             </button>
           </div>
 
-          {!hasFillablePdf && (
-            <p className="mt-3 text-xs text-[#64748B]/80">
-              This form has no fillable PDF fields, so NEXUS can&apos;t produce a completed copy.
-              copy the values above into the form instead.
-            </p>
-          )}
         </div>
       )}
 

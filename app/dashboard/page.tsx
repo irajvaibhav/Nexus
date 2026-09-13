@@ -6,9 +6,12 @@ import { createClient } from "@/lib/supabase-browser";
 import { daysLeft, daysLabel } from "@/lib/dates";
 import { docHealth, LOW_CONFIDENCE_THRESHOLD } from "@/lib/doc-status";
 import { detectConflicts, type ConflictGroup } from "@/lib/conflicts";
-import { geocodeCity, getDailyForecast, bestUpcomingDay, weatherEmoji, type DailyForecast } from "@/lib/weather";
-import { DocumentsIcon, ChatIcon, ScanIcon, CheckSquareIcon, SparkleIcon, BellIcon } from "@/components/icons";
+import { geocodeCity, getDailyForecast, bestUpcomingDay, type DailyForecast } from "@/lib/weather";
+import { DocumentsIcon, ChatIcon, ScanIcon, CheckSquareIcon, SparkleIcon, BellIcon, ArrowUpIcon, MicIcon } from "@/components/icons";
 import { DocIcon } from "@/components/doc-icon";
+import { WeekView, type WeekEvent } from "@/components/week-view";
+import { CategoryIcon } from "@/components/category-icon";
+import { mergeCategories, type CustomCategoryRow } from "@/lib/categories";
 import { useCallback, useEffect, useState } from "react";
 
 type Deadline = {
@@ -65,6 +68,11 @@ export default function DashboardPage() {
   const [addedLink, setAddedLink] = useState<string | null>(null);
   const [addedToCalendar, setAddedToCalendar] = useState(false);
   const [calendarError, setCalendarError] = useState("");
+  const [calendarLoading, setCalendarLoading] = useState(true);
+  const [events, setEvents] = useState<WeekEvent[]>([]);
+  const [customCategories, setCustomCategories] = useState<CustomCategoryRow[]>([]);
+  const [loadingPage, setLoadingPage] = useState(true);
+  const [askInput, setAskInput] = useState("");
 
   const docFileNames = new Map(docs.map((d) => [d.id, d.file_name]));
 
@@ -75,7 +83,7 @@ export default function DashboardPage() {
         setName(user.user_metadata?.full_name?.split(" ")[0] || "there");
       }
 
-      const [{ data: docRows }, { count: openTasks }, { data: deadlineRows }, { data: fieldRows }, { data: profile }] =
+      const [{ data: docRows }, { count: openTasks }, { data: deadlineRows }, { data: fieldRows }, { data: profile }, { data: catRows }] =
         await Promise.all([
           supabase.from("documents").select("id, file_name, doc_type, doc_category, status, uploaded_at").order("uploaded_at", { ascending: false }),
           supabase.from("tasks").select("*", { count: "exact", head: true }).eq("done", false),
@@ -88,7 +96,9 @@ export default function DashboardPage() {
           user
             ? supabase.from("profiles").select("city, agent_permission").eq("id", user.id).single()
             : Promise.resolve({ data: null }),
+          supabase.from("custom_categories").select("name, icon").order("created_at", { ascending: true }),
         ]);
+      setCustomCategories(catRows || []);
 
       setDocs(docRows || []);
       setOpenTasksCount(openTasks || 0);
@@ -105,6 +115,7 @@ export default function DashboardPage() {
       setCity(p?.city || "");
       setAgentPermission(p?.agent_permission || "recommend");
       setProfileLoaded(true);
+      setLoadingPage(false);
     }
     load();
   }, [supabase]);
@@ -140,12 +151,14 @@ export default function DashboardPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/calendar/status");
+        const res = await fetch("/api/calendar/upcoming");
         const data = await res.json();
         setCalendarConnected(!!data.connected);
+        setEvents(data.events || []);
       } catch {
         setCalendarConnected(false);
       }
+      setCalendarLoading(false);
     })();
   }, []);
 
@@ -171,7 +184,11 @@ export default function DashboardPage() {
     nearestDays !== null && nearestDays >= 0
       ? forecast.filter((_, i) => i <= Math.min(nearestDays, forecast.length - 1))
       : forecast;
-  const suggestedDay = bestUpcomingDay(forecastWithinWindow);
+  // With a calendar connected, prefer a dry day that is also free; fall back to
+  // the driest day if every candidate has something on it.
+  const busyDays = new Set(events.map((e) => e.start.slice(0, 10)));
+  const freeCandidates = calendarConnected ? forecastWithinWindow.filter((f) => !busyDays.has(f.date)) : forecastWithinWindow;
+  const suggestedDay = bestUpcomingDay(freeCandidates.length > 0 ? freeCandidates : forecastWithinWindow);
   const canExecute = agentPermission === "execute";
 
   function goAsk(question: string) {
@@ -247,6 +264,17 @@ export default function DashboardPage() {
   }
 
   const today = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  const categories = mergeCategories(customCategories);
+  const suggestion = suggestedDay && nearestDeadline && nearestDays !== null && nearestDays <= 45
+    ? { day: suggestedDay, forTitle: nearestDeadline.title.toLowerCase() }
+    : null;
+
+  function submitAsk(e: React.FormEvent) {
+    e.preventDefault();
+    goAsk(askInput.trim() || "What needs my attention this week?");
+  }
+
+  if (loadingPage) return <HomeSkeleton />;
 
   return (
     <div className="animate-fade-in-up">
@@ -255,30 +283,73 @@ export default function DashboardPage() {
         {greeting()}, {name || "there"}.
       </h1>
 
-      <p className="text-sm font-semibold text-[#0F172A] mt-7 mb-3">What needs your attention</p>
-      {attention.length === 0 ? (
-        <div className="card px-5 py-4 flex items-center gap-3">
-          <span className="w-9 h-9 rounded-full bg-gradient-to-br from-[#DCFCE7] to-[#BBF7D0] text-[#15803D] flex items-center justify-center font-bold">✓</span>
-          <p className="text-sm text-[#1E293B]">
-            {docs.length === 0 ? "Nothing yet. Add your first document to get started." : "Nothing pending. Everything is in order."}
-          </p>
-          {docs.length === 0 && (
-            <Link href="/dashboard/documents" className="ml-auto px-4 py-2 rounded-full bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white text-sm font-semibold shadow-md shadow-[#2563EB]/30">
-              Add document
-            </Link>
-          )}
-        </div>
-      ) : (
-        <div className={`grid grid-cols-1 gap-3 ${attention.length > 1 ? "md:grid-cols-2" : ""}`}>
-          {attention.map((a, i) => (
-            <AttentionCard key={a.key} item={a} primary={i === 0} />
-          ))}
+      {/* Ask NEXUS first: it's the core of the product, so it sits right under the greeting. */}
+      <section className="mt-6 relative">
+        <div className="absolute -inset-px rounded-[22px] bg-gradient-to-r from-[#2563EB]/40 via-[#4F46E5]/30 to-[#0EA5E9]/40 blur-sm opacity-70 pointer-events-none" />
+        <form onSubmit={submitAsk} className="relative card p-2 pl-4 flex items-center gap-2 shadow-xl shadow-[#2563EB]/10">
+          <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center shrink-0 shadow-md shadow-[#2563EB]/30">
+            <SparkleIcon className="w-5 h-5" />
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#2563EB] leading-none">Ask NEXUS</p>
+            <input
+              value={askInput}
+              onChange={(e) => setAskInput(e.target.value)}
+              placeholder="When does my insurance expire? What's my PAN? What do I need for a loan?"
+              className="w-full py-1.5 bg-transparent text-[15px] text-[#0F172A] placeholder-[#94A3B8] focus:outline-none"
+            />
+          </div>
+          <Link href="/dashboard/ask?voice=1" className="hidden sm:flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-[#E6E8EE] text-sm font-medium text-[#1E293B] hover:bg-[#F8FAFC] transition-colors">
+            <MicIcon className="w-[18px] h-[18px]" /> Voice
+          </Link>
+          <button type="submit" className="w-11 h-11 rounded-xl bg-[#0F172A] text-white flex items-center justify-center hover:bg-[#1E293B] transition-colors" aria-label="Ask">
+            <ArrowUpIcon className="w-5 h-5" />
+          </button>
+        </form>
+      </section>
+
+      {attention.length > 0 && (
+        <>
+          <p className="text-sm font-semibold text-[#0F172A] mt-7 mb-3">What needs your attention</p>
+          <div className={`grid grid-cols-1 gap-3 stagger ${attention.length > 1 ? "md:grid-cols-2" : ""}`}>
+            {attention.map((a, i) => (
+              <AttentionCard key={a.key} item={a} primary={i === 0} />
+            ))}
+          </div>
+        </>
+      )}
+      {attention.length === 0 && docs.length === 0 && (
+        <div className="card mt-7 px-5 py-4 flex items-center gap-3">
+          <span className="w-9 h-9 rounded-full bg-gradient-to-br from-[#DBEAFE] to-[#BFDBFE] text-[#1D4ED8] flex items-center justify-center font-bold">+</span>
+          <p className="text-sm text-[#1E293B]">Add your first document and NEXUS starts keeping track.</p>
+          <Link href="/dashboard/documents" className="ml-auto px-4 py-2 rounded-full bg-gradient-to-r from-[#2563EB] to-[#4F46E5] text-white text-sm font-semibold shadow-md shadow-[#2563EB]/30">
+            Add document
+          </Link>
         </div>
       )}
 
+      <div className="mt-6">
+        <WeekView
+          cityLabel={weatherLabel.split(",")[0] || city}
+          weatherState={weatherState}
+          forecast={forecast}
+          onRetryWeather={loadWeather}
+          calendarConnected={calendarConnected}
+          calendarLoading={calendarLoading}
+          events={events}
+          deadlines={deadlines}
+          suggestion={suggestion}
+          onAddToCalendar={addToCalendar}
+          addState={addedToCalendar ? "added" : addingToCalendar ? "adding" : "idle"}
+          addedLink={addedLink}
+          canExecute={canExecute}
+        />
+        {calendarError && <p className="mt-2 text-xs text-[#DB2777]">{calendarError}</p>}
+      </div>
+
       <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1.9fr_1fr] gap-4 items-start">
         <div className="space-y-4">
-          <section className="card flex flex-col min-h-[340px]">
+          <section className="card flex flex-col">
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
                 <span className="w-8 h-8 rounded-lg bg-[#FFF7ED] text-[#EA580C] flex items-center justify-center"><BellIcon className="w-4 h-4" /></span>
@@ -288,15 +359,14 @@ export default function DashboardPage() {
                 View all
               </Link>
             </div>
-
             {deadlines.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center px-6 pb-6">
+              <div className="flex flex-col items-center justify-center text-center px-6 pb-8 pt-2">
                 <span className="w-12 h-12 rounded-2xl bg-[#FFF7ED] text-[#EA580C] flex items-center justify-center mb-3"><BellIcon className="w-6 h-6" /></span>
                 <p className="text-sm font-semibold text-[#0F172A]">No dates on the horizon</p>
                 <p className="text-xs text-[#64748B] mt-1 max-w-xs">Expiry and renewal dates from your documents appear here, soonest first.</p>
               </div>
             ) : (
-              <ul className="divide-y divide-[#E6E8EE]/70 flex-1">
+              <ul className="divide-y divide-[#E6E8EE]/70">
                 {deadlines.slice(0, 5).map((d) => {
                   const days = daysLeft(d.expiry_date);
                   const date = new Date(d.expiry_date);
@@ -318,86 +388,37 @@ export default function DashboardPage() {
                 })}
               </ul>
             )}
-
-            {deadlines.length > 0 && deadlines.length < 3 && (
-              <p className="px-5 py-3 text-xs text-[#94A3B8] flex-1">
-                More dates appear here as you add documents.
-              </p>
-            )}
-
-            {nearestDeadline && nearestDays !== null && nearestDays <= 30 && (
-              <div className="mx-5 mb-5 mt-2 rounded-xl bg-gradient-to-r from-[#EAF2FF] to-[#EEF2FF] border border-[#CFE0FF] px-4 py-3 flex items-center gap-3 flex-wrap">
-                <span className="w-8 h-8 rounded-full bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center shrink-0 shadow-md shadow-[#2563EB]/30"><SparkleIcon className="w-4 h-4" /></span>
-                <p className="text-sm text-[#1E293B] flex-1 min-w-[200px]">
-                  {suggestedDay
-                    ? <>NEXUS suggests <span className="font-semibold">{new Date(`${suggestedDay.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" })}</span> for the {nearestDeadline.title.toLowerCase()} renewal. {suggestedDay.description}, {suggestedDay.precipProbability}% rain.</>
-                    : weatherState === "loading"
-                    ? <>Checking the forecast for a good day…</>
-                    : weatherState === "error"
-                    ? <>Forecast unavailable, so no day suggested yet. <button onClick={loadWeather} className="text-[#2563EB] font-medium">Retry</button></>
-                    : <><Link href="/dashboard/settings" className="text-[#2563EB] font-medium">Add your city</Link> and NEXUS will pick a good day for this.</>}
-                </p>
-                {suggestedDay && (
-                  calendarConnected && canExecute ? (
-                    addedToCalendar ? (
-                      addedLink
-                        ? <a href={addedLink} target="_blank" rel="noreferrer" className="text-xs px-3 py-1.5 rounded-full bg-[#F0FDF4] text-[#15803D] font-semibold">Added ✓ Open</a>
-                        : <span className="text-xs px-3 py-1.5 rounded-full bg-[#F0FDF4] text-[#15803D] font-semibold">Added ✓</span>
-                    ) : (
-                      <button onClick={addToCalendar} disabled={addingToCalendar} className="text-xs px-3 py-1.5 rounded-full border border-[#E6E8EE] bg-white text-[#1E293B] font-semibold hover:bg-[#F8FAFC] disabled:opacity-50">
-                        {addingToCalendar ? "Adding…" : "Add to calendar"}
-                      </button>
-                    )
-                  ) : (
-                    <button onClick={() => goAsk(`What do I need to renew my ${nearestDeadline.title}?`)} className="text-xs px-3 py-1.5 rounded-full border border-[#E6E8EE] bg-white text-[#1E293B] font-semibold hover:bg-[#F8FAFC]">
-                      Ask NEXUS
-                    </button>
-                  )
-                )}
-                {calendarError && <p className="w-full text-xs text-[#DB2777]">{calendarError}</p>}
-              </div>
-            )}
           </section>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger">
             <Tile href="/dashboard/documents" label="Scan" hint="Add a document" tone="from-[#2563EB] to-[#4F46E5]" icon={<DocumentsIcon className="w-5 h-5" />} />
             <Tile href="/dashboard/ask" label="Ask" hint="Get an answer" tone="from-[#0EA5E9] to-[#2563EB]" icon={<ChatIcon className="w-5 h-5" />} />
             <Tile href="/dashboard/tasks" label="Add" hint="New task" tone="from-[#16A34A] to-[#0D9488]" icon={<CheckSquareIcon className="w-5 h-5" />} />
             <Tile href="/dashboard/scan" label="Fill" hint="Complete a form" tone="from-[#F97316] to-[#DB2777]" icon={<ScanIcon className="w-5 h-5" />} />
           </div>
-
-          {openTasksCount > 0 && (
-            <Link href="/dashboard/tasks" className="card card-hover flex items-center gap-3 px-5 py-4">
-              <CheckSquareIcon className="w-5 h-5 text-[#2563EB]" />
-              <p className="text-sm font-semibold text-[#1E293B]">
-                {openTasksCount} open task{openTasksCount === 1 ? "" : "s"}
-              </p>
-              <span className="ml-auto text-xs text-[#64748B]">View</span>
-            </Link>
-          )}
         </div>
 
         <div className="space-y-4">
-          <WeatherCard
-            city={city}
-            label={weatherLabel}
-            state={profileLoaded ? weatherState : "loading"}
-            error={weatherError}
-            forecast={forecast}
-            onRetry={loadWeather}
-          />
-
           <section className="card p-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[#0F172A]">Documents</h2>
+              <h2 className="text-lg font-bold text-[#0F172A]">Vault</h2>
               <Link href="/dashboard/documents" className="text-xs px-3 py-1.5 rounded-full border border-[#E6E8EE] text-[#1E293B] font-medium hover:bg-[#F8FAFC]">
                 View all
               </Link>
             </div>
-            {docs.length === 0 ? (
-              <p className="mt-3 text-sm text-[#64748B]">Nothing uploaded yet.</p>
-            ) : (
-              <ul className="mt-3 space-y-3">
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {categories.slice(0, 4).map((cat) => (
+                <Link key={cat.name} href={`/dashboard/documents?category=${encodeURIComponent(cat.name)}`} className="flex items-center gap-2.5 rounded-xl border border-[#E6E8EE] px-3 py-2.5 hover:border-[#2563EB]/40 hover:bg-[#F8FAFC] transition-colors">
+                  <CategoryIcon name={cat.name} emoji={cat.icon} size="sm" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-[#0F172A] truncate">{cat.name}</p>
+                    <p className="text-[11px] text-[#64748B]">{docs.filter((d) => d.doc_category === cat.name).length} docs</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            {docs.length > 0 && (
+              <ul className="mt-3 pt-3 border-t border-[#E6E8EE]/70 space-y-2.5">
                 {docs.slice(0, 3).map((doc) => (
                   <li key={doc.id}>
                     <Link href={`/dashboard/documents/${doc.id}`} className="flex items-center gap-3 group">
@@ -413,6 +434,16 @@ export default function DashboardPage() {
             )}
           </section>
 
+          {openTasksCount > 0 && (
+            <Link href="/dashboard/tasks" className="card card-hover flex items-center gap-3 px-5 py-4">
+              <CheckSquareIcon className="w-5 h-5 text-[#2563EB]" />
+              <p className="text-sm font-semibold text-[#1E293B]">
+                {openTasksCount} open task{openTasksCount === 1 ? "" : "s"}
+              </p>
+              <span className="ml-auto text-xs text-[#64748B]">View</span>
+            </Link>
+          )}
+
           <section className="rounded-2xl border border-[#E6E8EE] bg-gradient-to-br from-[#F8FAFC] to-[#EEF2FF] p-5 flex gap-3">
             <span className="w-9 h-9 rounded-full bg-[#0F172A] text-white flex items-center justify-center text-sm shrink-0 shadow-md">🔒</span>
             <div>
@@ -422,6 +453,29 @@ export default function DashboardPage() {
               </p>
             </div>
           </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HomeSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading your home">
+      <div className="skeleton h-3 w-40" />
+      <div className="skeleton h-10 w-80 mt-3" />
+      <div className="skeleton h-16 w-full mt-6 rounded-2xl" />
+      <div className="skeleton h-56 w-full mt-6 rounded-2xl" />
+      <div className="mt-5 grid grid-cols-1 lg:grid-cols-[1.9fr_1fr] gap-4">
+        <div className="space-y-4">
+          <div className="skeleton h-48 rounded-2xl" />
+          <div className="grid grid-cols-4 gap-3">
+            {[0, 1, 2, 3].map((i) => <div key={i} className="skeleton h-32 rounded-2xl" />)}
+          </div>
+        </div>
+        <div className="space-y-4">
+          <div className="skeleton h-56 rounded-2xl" />
+          <div className="skeleton h-24 rounded-2xl" />
         </div>
       </div>
     </div>
@@ -461,86 +515,5 @@ function Tile({ href, label, hint, tone, icon }: { href: string; label: string; 
       <span className="text-sm font-bold text-[#0F172A]">{label}</span>
       <span className="text-[11px] text-[#64748B] -mt-1.5">{hint}</span>
     </Link>
-  );
-}
-
-function WeatherCard({ city, label, state, error, forecast, onRetry }: {
-  city: string;
-  label: string;
-  state: "idle" | "loading" | "ready" | "error";
-  error: string;
-  forecast: DailyForecast[];
-  onRetry: () => void;
-}) {
-  const today = forecast[0];
-  const best = bestUpcomingDay(forecast.slice(1));
-
-  return (
-    <section className="card sky p-5 overflow-hidden relative">
-      <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-[#BFDBFE]/40 blur-2xl pointer-events-none" />
-      <div className="relative flex items-center justify-between">
-        <h2 className="text-lg font-bold text-[#0F172A]">
-          {state === "ready" && label ? label.split(",")[0] : "Weather"}
-        </h2>
-        {state === "ready" && (
-          <button onClick={onRetry} className="text-xs text-[#64748B] hover:text-[#2563EB]" title="Refresh">↻</button>
-        )}
-      </div>
-
-      {state === "idle" && (
-        <p className="mt-3 text-sm text-[#64748B]">
-          <Link href="/dashboard/settings" className="text-[#2563EB] font-medium">Add your city</Link> for the local forecast.
-        </p>
-      )}
-
-      {state === "loading" && (
-        <div className="mt-3 animate-pulse space-y-2.5" aria-label="Loading forecast">
-          <div className="h-7 w-2/3 rounded-lg bg-[#F1F5F9]" />
-          <div className="h-3.5 w-1/2 rounded bg-[#F1F5F9]" />
-          <div className="flex gap-2 mt-3">
-            {[0, 1, 2, 3, 4].map((i) => <div key={i} className="flex-1 h-12 rounded-xl bg-[#F1F5F9]" />)}
-          </div>
-          <p className="text-[11px] text-[#64748B]/70">Checking {city}…</p>
-        </div>
-      )}
-
-      {state === "error" && (
-        <div className="mt-3">
-          <p className="text-sm text-[#0F172A] font-medium">Forecast unavailable</p>
-          <p className="text-xs text-[#64748B] mt-1">{error}</p>
-          <div className="mt-3 flex gap-2">
-            <button onClick={onRetry} className="text-xs px-3 py-1.5 bg-[#2563EB] text-white rounded-full font-semibold hover:bg-[#1D4ED8]">Try again</button>
-            <Link href="/dashboard/settings" className="text-xs px-3 py-1.5 border border-[#E6E8EE] rounded-full font-semibold text-[#1E293B] hover:bg-[#F8FAFC]">Change city</Link>
-          </div>
-        </div>
-      )}
-
-      {state === "ready" && today && (
-        <div className="mt-3">
-          <div className="flex items-center gap-3">
-            <span className="text-5xl leading-none drop-shadow-sm">{weatherEmoji(today.code)}</span>
-            <div>
-              <p className="text-4xl font-bold text-[#0F172A] leading-none">{today.tempMax}°</p>
-              <p className="text-xs text-[#64748B]">{today.description} · {today.precipProbability}% rain</p>
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-5 gap-1.5">
-            {forecast.slice(1, 6).map((day) => (
-              <div
-                key={day.date}
-                className={`rounded-xl px-1 py-2 text-center border ${best?.date === day.date ? "bg-white border-[#93C5FD] shadow-sm" : "bg-white/60 border-transparent"}`}
-                title={`${day.description}, ${day.precipProbability}% rain`}
-              >
-                <p className="text-[10px] font-semibold text-[#64748B]">
-                  {new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short" })}
-                </p>
-                <p className="text-base leading-tight">{weatherEmoji(day.code)}</p>
-                <p className="text-[10px] text-[#1E293B]">{day.tempMax}°</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </section>
   );
 }

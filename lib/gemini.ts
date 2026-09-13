@@ -2,9 +2,42 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export const flashModel = genAI.getGenerativeModel({
-  model: "gemini-3.5-flash",
-});
+import type { GenerateContentRequest, GenerateContentResult, Part } from "@google/generative-ai";
+
+const noThinking = { thinkingConfig: { thinkingBudget: 0 } } as unknown as Record<string, unknown>;
+
+const primary = genAI.getGenerativeModel({ model: "gemini-3.5-flash", generationConfig: noThinking });
+// Same family, separate quota bucket. Used when the primary is rate-limited
+// so an upload never fails just because a minute was busy.
+const fallbacks = [
+  genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: noThinking }),
+  genAI.getGenerativeModel({ model: "gemini-2.5-flash" }),
+];
+
+function isRateLimit(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /429|Too Many Requests|quota|RESOURCE_EXHAUSTED/i.test(msg);
+}
+
+async function generate(request: string | Array<string | Part> | GenerateContentRequest): Promise<GenerateContentResult> {
+  try {
+    return await primary.generateContent(request);
+  } catch (err) {
+    if (!isRateLimit(err)) throw err;
+    let last: unknown = err;
+    for (const model of fallbacks) {
+      try {
+        return await model.generateContent(request);
+      } catch (e) {
+        last = e;
+        if (!isRateLimit(e)) throw e;
+      }
+    }
+    throw new Error("NEXUS is busy right now (AI quota reached). Please try again in a minute.", { cause: last });
+  }
+}
+
+export const flashModel = { generateContent: generate };
 
 export async function extractDocumentInfo(
   base64Data: string,

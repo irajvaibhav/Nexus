@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-browser";
 import { useState } from "react";
+import { NexusMark } from "@/components/brand";
 
 type Mode = "signin" | "signup";
 
@@ -41,9 +42,7 @@ export function AuthShell({ mode, openEmail, children }: { mode: Mode; openEmail
 
       <div className="relative w-full max-w-[440px] bg-white rounded-3xl border border-[#E6E8EE] shadow-2xl shadow-[#0F172A]/10 px-8 py-9 animate-fade-in-up">
         <div className="flex flex-col items-center text-center">
-          <span className="w-14 h-14 rounded-2xl bg-[#2563EB] text-white flex items-center justify-center text-2xl font-bold shadow-lg shadow-[#2563EB]/30">
-            N
-          </span>
+          <NexusMark size={56} />
           <h1 className="mt-5 text-2xl font-semibold tracking-tight text-[#0F172A]">{copy.title}</h1>
           <p className="mt-2 text-sm text-[#64748B] leading-relaxed max-w-[340px]">{copy.blurb}</p>
         </div>

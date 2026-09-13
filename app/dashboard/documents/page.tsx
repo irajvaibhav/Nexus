@@ -8,6 +8,7 @@ import { daysLeft } from "@/lib/dates";
 import { deleteDocumentCascade } from "@/lib/delete-document";
 import { uploadWithProgress, processDocument, type ProcessingStage } from "@/lib/upload";
 import { DocIcon } from "@/components/doc-icon";
+import { CategoryIcon } from "@/components/category-icon";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, useCallback } from "react";
 
@@ -102,6 +103,7 @@ function DocumentsPageInner() {
   const [jobs, setJobs] = useState<UploadJob[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [loadingList, setLoadingList] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [smartFilter, setSmartFilter] = useState<SmartFilter>("all");
@@ -188,6 +190,7 @@ function DocumentsPageInner() {
     }
 
     setDocMeta(meta);
+    setLoadingList(false);
   }, [supabase]);
 
   const loadCategories = useCallback(async () => {
@@ -466,7 +469,7 @@ function DocumentsPageInner() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+      <div className="mt-6 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 stagger">
         {categories.map((cat) => {
           const count = docs.filter((d) => d.doc_category === cat.name).length;
           const active = activeCategory === cat.name;
@@ -476,7 +479,7 @@ function DocumentsPageInner() {
               onClick={() => setCategory(active ? null : cat.name)}
               className={`card card-hover py-4 flex flex-col items-center gap-2 ${active ? "!border-[#2563EB] ring-2 ring-[#2563EB]/15" : ""}`}
             >
-              <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${cat.color}`}>{cat.icon}</span>
+              <CategoryIcon name={cat.name} emoji={cat.icon} />
               <span className="text-xs font-medium text-[#0F172A] px-2 truncate max-w-full">{cat.name}</span>
               <span className="text-[11px] text-[#64748B]">{count}</span>
             </button>
@@ -595,7 +598,17 @@ function DocumentsPageInner() {
           <span>Status</span>
           <span />
         </div>
-        {visibleDocs.length === 0 ? (
+        {loadingList ? (
+          <div className="divide-y divide-[#E6E8EE]/70" aria-busy="true">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-3 px-5 py-4">
+                <span className="skeleton w-10 h-10 rounded-xl" />
+                <div className="flex-1 space-y-2"><span className="skeleton block h-3 w-1/3" /><span className="skeleton block h-2.5 w-1/5" /></div>
+                <span className="skeleton h-5 w-16 rounded-full" />
+              </div>
+            ))}
+          </div>
+        ) : visibleDocs.length === 0 ? (
           <div className="p-10 text-center">
             <p className="text-sm text-[#64748B]">
               {search.trim()
@@ -741,7 +754,7 @@ function DocumentsPageInner() {
                       : "bg-white text-[#64748B] border-[#E6E8EE] hover:border-[#2563EB]"
                   }`}
                 >
-                  {cat.icon} {cat.name}
+                  <span className="inline-flex items-center gap-1.5"><CategoryIcon name={cat.name} emoji={cat.icon} size="sm" />{cat.name}</span>
                 </button>
               ))}
             </div>

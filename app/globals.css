@@ -96,3 +96,51 @@ html {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Ambient motion: two soft blobs drifting slowly. Faint on purpose. */
+@keyframes drift-a {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(60px, -40px) scale(1.08); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes drift-b {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-50px, 50px) scale(1.06); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+.blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  pointer-events: none;
+  will-change: transform;
+}
+.blob-a {
+  top: -160px; right: -120px; width: 560px; height: 560px;
+  background: radial-gradient(circle, rgb(191 219 254 / 0.9), rgb(191 219 254 / 0) 70%);
+  animation: drift-a 26s ease-in-out infinite;
+}
+.blob-b {
+  bottom: -200px; left: -140px; width: 520px; height: 520px;
+  background: radial-gradient(circle, rgb(221 214 254 / 0.8), rgb(221 214 254 / 0) 70%);
+  animation: drift-b 32s ease-in-out infinite;
+}
+.blob-faint { opacity: 0.55; }
+
+/* Staggered entrance for card grids */
+.stagger > * { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 60ms; }
+.stagger > *:nth-child(3) { animation-delay: 120ms; }
+.stagger > *:nth-child(4) { animation-delay: 180ms; }
+.stagger > *:nth-child(5) { animation-delay: 240ms; }
+.stagger > *:nth-child(6) { animation-delay: 300ms; }
+
+/* Skeletons */
+@keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+.skeleton {
+  border-radius: 0.75rem;
+  background: linear-gradient(90deg, #EEF1F5 25%, #F8FAFC 37%, #EEF1F5 63%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s linear infinite;
+}

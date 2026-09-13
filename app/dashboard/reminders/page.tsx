@@ -40,6 +40,41 @@ export default function RemindersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [applying, setApplying] = useState(false);
   const [applyResult, setApplyResult] = useState<number | null>(null);
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [calState, setCalState] = useState<Record<string, { phase: "adding" | "added" | "failed"; link?: string | null; message?: string }>>({});
+
+  useEffect(() => {
+    fetch("/api/calendar/status")
+      .then((r) => r.json())
+      .then((d) => setCalendarConnected(!!d.connected))
+      .catch(() => setCalendarConnected(false));
+  }, []);
+
+  // Puts the date itself on the calendar; the event carries a popup a day
+  // before and an email a week before, so the reminder reaches the user
+  // without opening NEXUS.
+  async function addReminderToCalendar(r: Reminder) {
+    setCalState((prev) => ({ ...prev, [r.id]: { phase: "adding" } }));
+    try {
+      const res = await fetch("/api/calendar/create-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `${r.title} (NEXUS)`,
+          description: `${r.title} from ${r.documents?.file_name || "your documents"}. Added by NEXUS.`,
+          dateISO: r.expiry_date.slice(0, 10),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCalState((prev) => ({ ...prev, [r.id]: { phase: "failed", message: data.error || "Couldn't add it." } }));
+        return;
+      }
+      setCalState((prev) => ({ ...prev, [r.id]: { phase: "added", link: data.htmlLink } }));
+    } catch {
+      setCalState((prev) => ({ ...prev, [r.id]: { phase: "failed", message: "Couldn't reach NEXUS." } }));
+    }
+  }
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -230,6 +265,24 @@ export default function RemindersPage() {
                   >
                     Ask
                   </button>
+                  {!isDone && calendarConnected && (
+                    calState[r.id]?.phase === "added" ? (
+                      calState[r.id]?.link
+                        ? <a href={calState[r.id]!.link!} target="_blank" rel="noreferrer" className="text-xs px-2.5 py-1 rounded-xl bg-[#F0FDF4] text-[#15803D] font-semibold">On calendar ✓</a>
+                        : <span className="text-xs px-2.5 py-1 rounded-xl bg-[#F0FDF4] text-[#15803D] font-semibold">On calendar ✓</span>
+                    ) : (
+                      <button
+                        onClick={() => addReminderToCalendar(r)}
+                        disabled={calState[r.id]?.phase === "adding"}
+                        title={calState[r.id]?.message || "Add to Google Calendar with reminders"}
+                        className={`text-xs px-2.5 py-1 rounded-xl border transition-colors bg-white disabled:opacity-50 ${
+                          calState[r.id]?.phase === "failed" ? "border-[#FBCFE8] text-[#DB2777]" : "border-[#E6E8EE] text-[#64748B] hover:border-[#2563EB] hover:text-[#2563EB]"
+                        }`}
+                      >
+                        {calState[r.id]?.phase === "adding" ? "Adding…" : calState[r.id]?.phase === "failed" ? "Retry calendar" : "Remind me"}
+                      </button>
+                    )
+                  )}
                   {isDone ? (
                     <button
                       onClick={() => setStatus(r.id, "active")}

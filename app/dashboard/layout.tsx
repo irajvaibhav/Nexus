@@ -5,9 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import {
   HomeIcon, DocumentsIcon, ChatIcon, ScanIcon, BellIcon,
-  CheckSquareIcon, ActivityIcon, GearIcon, LogoutIcon, MicIcon, ArrowUpIcon, SparkleIcon,
+  CheckSquareIcon, ActivityIcon, SlidersIcon, LogoutIcon, MicIcon, ArrowUpIcon, SparkleIcon,
 } from "@/components/icons";
 import { useEffect, useState } from "react";
+import { NexusMark } from "@/components/brand";
 
 const navItems = [
   { href: "/dashboard", icon: HomeIcon, label: "Home", short: "Home" },
@@ -19,13 +20,6 @@ const navItems = [
   { href: "/dashboard/activity", icon: ActivityIcon, label: "Activity", short: "Log" },
 ];
 
-function Logo({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 19V5l12 14V5" />
-    </svg>
-  );
-}
 
 export default function DashboardLayout({
   children,
@@ -36,7 +30,9 @@ export default function DashboardLayout({
   const router = useRouter();
   const [supabase] = useState(() => createClient());
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [ask, setAsk] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     async function getUser() {
@@ -46,6 +42,7 @@ export default function DashboardLayout({
         return;
       }
       setName(user.user_metadata?.full_name || "User");
+      setEmail(user.email || "");
     }
     getUser();
   }, [router, supabase]);
@@ -62,21 +59,19 @@ export default function DashboardLayout({
     router.push(q ? `/dashboard/ask?q=${encodeURIComponent(q)}` : "/dashboard/ask");
   }
 
-  const onAskPage = pathname === "/dashboard/ask";
+  // Home and the chat page carry their own Ask box.
+  const onAskPage = pathname === "/dashboard/ask" || pathname === "/dashboard";
 
   return (
     <div className="min-h-screen flex bg-[#F6F7F9]">
-      <aside className="w-[96px] flex flex-col items-center fixed h-full bg-white border-r border-[#E6E8EE] z-20 py-5">
-        <Link
-          href="/dashboard"
-          className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0F172A] to-[#1E3A8A] text-white flex items-center justify-center shadow-lg shadow-[#1E3A8A]/30
-            hover:scale-105 transition-transform"
-          title="NEXUS"
-        >
-          <Logo className="w-6 h-6" />
+      <aside className="w-[96px] flex flex-col items-center fixed inset-y-0 left-0 bg-white border-r border-[#E6E8EE] z-20 py-4">
+        <Link href="/dashboard" title="NEXUS" className="hover:scale-105 transition-transform">
+          <NexusMark size={48} />
         </Link>
 
-        <nav className="flex-1 mt-6 flex flex-col items-center gap-1 w-full px-3">
+        {/* min-h-0 + overflow lets the list scroll on short screens instead of
+            pushing Settings and the profile below the fold. */}
+        <nav className="flex-1 min-h-0 overflow-y-auto mt-4 flex flex-col items-center gap-0.5 w-full px-3 [scrollbar-width:none]">
           {navItems.map((item) => {
             const isActive = item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href);
             const Icon = item.icon;
@@ -86,7 +81,7 @@ export default function DashboardLayout({
                 href={item.href}
                 aria-label={item.label}
                 aria-current={isActive ? "page" : undefined}
-                className={`group w-full rounded-2xl flex flex-col items-center gap-1 py-2.5 transition-all
+                className={`group w-full rounded-2xl flex flex-col items-center gap-1 py-2 shrink-0 transition-all
                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] ${
                   isActive
                     ? "bg-[#EAF2FF] text-[#2563EB]"
@@ -102,36 +97,63 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        <div className="flex flex-col items-center gap-2 w-full px-3">
+        <div className="flex flex-col items-center gap-1 w-full px-3 pt-2 border-t border-[#E6E8EE] shrink-0 relative">
           <Link
             href="/dashboard/settings"
             aria-label="Settings"
-            className={`w-full rounded-2xl flex flex-col items-center gap-1 py-2.5 transition-colors ${
+            className={`w-full rounded-2xl flex flex-col items-center gap-1 py-2 transition-colors ${
               pathname.startsWith("/dashboard/settings")
                 ? "bg-[#EAF2FF] text-[#2563EB]"
                 : "text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]"
             }`}
           >
-            <GearIcon className="w-6 h-6" />
-            <span className="text-[10px] font-semibold tracking-wide text-[#94A3B8]">Settings</span>
+            <SlidersIcon className="w-6 h-6" />
+            <span className={`text-[10px] font-semibold tracking-wide ${pathname.startsWith("/dashboard/settings") ? "text-[#2563EB]" : "text-[#94A3B8]"}`}>Settings</span>
           </Link>
           <button
-            onClick={handleLogout}
-            title={`Sign out ${name}`}
-            className="mt-1 w-11 h-11 rounded-full bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] text-white text-sm font-bold flex items-center
-              justify-center shadow-md shadow-[#2563EB]/25 group relative hover:scale-105 transition-transform"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            title={name}
+            className="mt-1 mb-1 w-11 h-11 rounded-full bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white text-sm font-bold flex items-center
+              justify-center shadow-md shadow-[#2563EB]/25 hover:scale-105 transition-transform ring-2 ring-white"
           >
             {name.charAt(0).toUpperCase() || "·"}
-            <span className="absolute inset-0 rounded-full bg-[#0F172A] text-white flex items-center justify-center
-              opacity-0 group-hover:opacity-100 transition-opacity">
-              <LogoutIcon className="w-4 h-4" />
-            </span>
           </button>
+
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+              <div role="menu" className="absolute left-[88px] bottom-2 z-40 w-64 card p-2 shadow-2xl animate-fade-in-up">
+                <div className="px-3 py-2.5 flex items-center gap-3">
+                  <span className="w-9 h-9 rounded-full bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white text-sm font-bold flex items-center justify-center">
+                    {name.charAt(0).toUpperCase()}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[#0F172A] truncate">{name}</p>
+                    <p className="text-xs text-[#64748B] truncate">{email}</p>
+                  </div>
+                </div>
+                <div className="h-px bg-[#E6E8EE] my-1" />
+                <Link href="/dashboard/settings" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-[#1E293B] hover:bg-[#F1F5F9]">
+                  <SlidersIcon className="w-4 h-4 text-[#64748B]" /> Settings
+                </Link>
+                <Link href="/dashboard/activity" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-[#1E293B] hover:bg-[#F1F5F9]">
+                  <ActivityIcon className="w-4 h-4 text-[#64748B]" /> Activity log
+                </Link>
+                <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-[#DB2777] hover:bg-[#FDF2F8]">
+                  <LogoutIcon className="w-4 h-4" /> Sign out
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </aside>
 
-      <main className="flex-1 min-h-screen ml-[96px]">
-        <div className="px-8 pt-8 pb-10 max-w-6xl mx-auto">
+      <main className="flex-1 min-h-screen ml-[96px] relative overflow-hidden">
+        <div aria-hidden className="blob blob-a blob-faint" />
+        <div aria-hidden className="blob blob-b blob-faint" />
+        <div className="relative px-8 pt-8 pb-10 max-w-6xl mx-auto">
           {children}
 
           {!onAskPage && (
