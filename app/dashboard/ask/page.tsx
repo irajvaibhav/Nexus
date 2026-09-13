@@ -28,8 +28,26 @@ type SpeechRecognitionLike = {
   stop: () => void;
   onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
 };
+
+function speechErrorMessage(code: string): string {
+  switch (code) {
+    case "not-allowed":
+    case "service-not-allowed":
+      return "Microphone access is blocked. Allow it from your browser's address bar, then try again.";
+    case "audio-capture":
+      return "No microphone found. Check that one is connected.";
+    case "no-speech":
+      return "Didn't catch anything. Try again, a bit closer to the mic.";
+    case "network":
+      return "Voice input needs an internet connection.";
+    case "aborted":
+      return "";
+    default:
+      return "Voice input stopped unexpectedly. You can type instead.";
+  }
+}
 
 export default function AskNexusPage() {
   return (
@@ -51,6 +69,8 @@ function AskNexus() {
   const [attachError, setAttachError] = useState("");
   const [listening, setListening] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
+  const [voiceBlockedReason, setVoiceBlockedReason] = useState("");
+  const [voiceError, setVoiceError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
@@ -86,7 +106,17 @@ function AskNexus() {
       webkitSpeechRecognition?: new () => SpeechRecognitionLike;
     };
     const Recognition = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!Recognition) return;
+
+    // The API is only exposed on a secure origin, so opening the dev server over
+    // a LAN IP silently has no speech support at all.
+    if (!Recognition) {
+      setVoiceBlockedReason(
+        window.isSecureContext
+          ? "This browser doesn't support voice input. Chrome, Edge or Safari do."
+          : "Voice input only works over https or on localhost — not over a plain network address."
+      );
+      return;
+    }
 
     const recognition = new Recognition();
     recognition.lang = "en-IN";
@@ -97,10 +127,14 @@ function AskNexus() {
       for (let i = 0; i < event.results.length; i++) {
         transcript += event.results[i][0].transcript;
       }
+      setVoiceError("");
       setInput(transcript);
     };
     recognition.onend = () => setListening(false);
-    recognition.onerror = () => setListening(false);
+    recognition.onerror = (event) => {
+      setListening(false);
+      setVoiceError(speechErrorMessage(event.error));
+    };
 
     recognitionRef.current = recognition;
     setVoiceSupported(true);
@@ -112,14 +146,26 @@ function AskNexus() {
 
   function toggleListening() {
     const recognition = recognitionRef.current;
-    if (!recognition) return;
+    if (!recognition) {
+      setVoiceError(voiceBlockedReason);
+      return;
+    }
 
     if (listening) {
       recognition.stop();
       setListening(false);
-    } else {
-      setListening(true);
+      return;
+    }
+
+    setVoiceError("");
+    try {
+      // Only mark it live once start() has actually taken, or a throw here
+      // leaves the button stuck mid-listen.
       recognition.start();
+      setListening(true);
+    } catch {
+      setListening(false);
+      setVoiceError("Voice input is still finishing the last take. Try again in a moment.");
     }
   }
 
@@ -352,6 +398,14 @@ function AskNexus() {
           <p className="mb-2 text-xs text-red-600 font-medium">{attachError}</p>
         )}
 
+        {voiceError && (
+          <p className="mb-2 text-xs text-[#B9832A] font-medium">{voiceError}</p>
+        )}
+
+        {listening && (
+          <p className="mb-2 text-xs text-[#D95D39] font-medium">Listening… speak now.</p>
+        )}
+
         {attachment && (
           <div className="mb-2 inline-flex items-center gap-2 bg-white border border-[#E5DFD7]
             rounded-xl px-2 py-1.5">
@@ -409,19 +463,25 @@ function AskNexus() {
               focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
           />
 
-          {voiceSupported && (
-            <button
-              onClick={toggleListening}
-              title={listening ? "Stop listening" : "Speak your question"}
-              className={`px-3 py-3 rounded-xl border transition-colors text-base leading-none ${
-                listening
-                  ? "bg-[#D95D39] border-[#D95D39] text-white animate-pulse"
-                  : "bg-white border-[#E5DFD7] hover:border-[#D95D39]"
-              }`}
-            >
-              🎤
-            </button>
-          )}
+          <button
+            onClick={toggleListening}
+            title={
+              !voiceSupported
+                ? voiceBlockedReason
+                : listening
+                ? "Stop listening"
+                : "Speak your question"
+            }
+            className={`px-3 py-3 rounded-xl border transition-colors text-base leading-none ${
+              listening
+                ? "bg-[#D95D39] border-[#D95D39] text-white animate-pulse"
+                : voiceSupported
+                ? "bg-white border-[#E5DFD7] hover:border-[#D95D39]"
+                : "bg-white border-[#E5DFD7] opacity-40"
+            }`}
+          >
+            🎤
+          </button>
 
           <button
             onClick={handleSend}

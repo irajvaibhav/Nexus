@@ -12,7 +12,7 @@ import { useEffect, useState } from "react";
 const navItems = [
   { href: "/dashboard", icon: HomeIcon, label: "Home" },
   { href: "/dashboard/documents", icon: DocumentsIcon, label: "Documents" },
-  { href: "/dashboard/ask", icon: ChatIcon, label: "Ask Nexus" },
+  { href: "/dashboard/ask", icon: ChatIcon, label: "Ask NEXUS" },
   { href: "/dashboard/scan", icon: ScanIcon, label: "Scan & Fill" },
   { href: "/dashboard/reminders", icon: BellIcon, label: "Reminders" },
   { href: "/dashboard/tasks", icon: CheckSquareIcon, label: "Tasks" },
@@ -110,11 +110,24 @@ export default function DashboardLayout({
         <header className="sticky top-0 z-10 bg-[#FCFAF7]/80 backdrop-blur-md border-b border-[#E5DFD7] px-6 py-3
           flex items-center justify-end gap-4 relative">
           <div className="flex items-center gap-3">
-            <button className="relative p-2 text-[#7C6E67] hover:text-[#2E2724]
-              transition-colors">
+            {/* Reachable from every page, not only Home and the sidebar. */}
+            {pathname !== "/dashboard/ask" && (
+              <Link
+                href="/dashboard/ask"
+                className="flex items-center gap-2 px-3.5 py-2 bg-[#D95D39] hover:bg-[#C24E2B] text-white
+                  rounded-xl text-sm font-semibold shadow-sm shadow-[#D95D39]/20 transition-colors"
+              >
+                <ChatIcon className="w-4 h-4" />
+                Ask NEXUS
+              </Link>
+            )}
+            <Link
+              href="/dashboard/reminders"
+              className="relative p-2 text-[#7C6E67] hover:text-[#2E2724] transition-colors"
+              title="Reminders"
+            >
               <BellIcon className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#D95D39] rounded-full" />
-            </button>
+            </Link>
           </div>
         </header>
 

@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { getAuthedUser } from "@/lib/require-user";
 import { getAgentLevel, allows, deniedMessage } from "@/lib/permissions";
-import { getValidAccessToken, createCalendarEvent } from "@/lib/google-calendar";
+import { getValidAccessToken, createCalendarEvent, CalendarDisconnectedError } from "@/lib/google-calendar";
 import { NextRequest, NextResponse } from "next/server";
 
 const supabase = createClient(
@@ -31,19 +31,28 @@ export async function POST(request: NextRequest) {
 
     const accessToken = await getValidAccessToken(supabase, authedUser.id);
     if (!accessToken) {
-      return NextResponse.json({ error: "Google Calendar not connected" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Google Calendar isn't connected. Connect it from Settings first.", disconnected: true },
+        { status: 400 }
+      );
     }
 
-    const eventId = await createCalendarEvent(accessToken, { title, description, dateISO });
+    const created = await createCalendarEvent(accessToken, { title, description, dateISO });
 
     await supabase.from("activity_log").insert({
       user_id: authedUser.id,
       action: "calendar",
-      details: { message: `Added "${title}" to Google Calendar on ${dateISO}` },
+      details: {
+        message: `Added "${title}" to Google Calendar on ${dateISO}`,
+        event_link: created.htmlLink,
+      },
     });
 
-    return NextResponse.json({ success: true, eventId });
+    return NextResponse.json({ success: true, eventId: created.id, htmlLink: created.htmlLink });
   } catch (err) {
+    if (err instanceof CalendarDisconnectedError) {
+      return NextResponse.json({ error: err.message, disconnected: true }, { status: 400 });
+    }
     const message = err instanceof Error ? err.message : "Failed to create calendar event";
     return NextResponse.json({ error: message }, { status: 500 });
   }

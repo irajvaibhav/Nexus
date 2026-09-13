@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase-browser";
 import { ScanIcon } from "@/components/icons";
 import { isSensitiveField } from "@/lib/sensitive";
+import { processDocument } from "@/lib/upload";
 import { useState } from "react";
 
 const LOW_CONFIDENCE = 0.75;
@@ -45,6 +46,8 @@ export default function ScanFillPage() {
   const [fileBase64, setFileBase64] = useState("");
   const [revealed, setRevealed] = useState<Set<number>>(new Set());
   const [copiedAll, setCopiedAll] = useState(false);
+  const [filledBase64, setFilledBase64] = useState("");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
 
   function reset() {
     setStage("upload");
@@ -53,6 +56,8 @@ export default function ScanFillPage() {
     setFileBase64("");
     setHasFillablePdf(false);
     setRevealed(new Set());
+    setFilledBase64("");
+    setSaveState("idle");
     setError("");
   }
 
@@ -180,6 +185,7 @@ export default function ScanFillPage() {
         return;
       }
 
+      setFilledBase64(data.filled_pdf_base64);
       const bytes = atob(data.filled_pdf_base64);
       const array = new Uint8Array(bytes.length);
       for (let i = 0; i < bytes.length; i++) array[i] = bytes.charCodeAt(i);
@@ -198,6 +204,55 @@ export default function ScanFillPage() {
       setError("Couldn't build the filled PDF. Please try again.");
     } finally {
       setExporting(false);
+    }
+  }
+
+  // The filled PDF is the deliverable; keeping a copy in the vault means it can
+  // be found, asked about and downloaded again later without re-scanning.
+  async function saveToDocuments() {
+    if (!filledBase64) return;
+    setSaveState("saving");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("signed out");
+
+      const bytes = atob(filledBase64);
+      const array = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) array[i] = bytes.charCodeAt(i);
+      const blob = new Blob([array], { type: "application/pdf" });
+      const savedName = `${fileName}-filled.pdf`;
+      const filePath = `${user.id}/${Date.now()}_${savedName.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+
+      const { error: uploadError } = await supabase.storage.from("Documents").upload(filePath, blob, {
+        contentType: "application/pdf",
+      });
+      if (uploadError) throw uploadError;
+
+      const { data: row, error: dbError } = await supabase
+        .from("documents")
+        .insert({
+          user_id: user.id,
+          file_name: savedName,
+          file_type: "application/pdf",
+          file_path: filePath,
+          doc_type: null,
+          status: "processing",
+        })
+        .select()
+        .single();
+      if (dbError || !row) throw dbError || new Error("insert failed");
+
+      await supabase.from("activity_log").insert({
+        user_id: user.id,
+        action: "scan",
+        details: { message: `Saved the filled ${formName} to Documents`, document_id: row.id },
+      });
+
+      // Index it in the background so it turns up in search and Ask NEXUS.
+      processDocument(row.id, () => {});
+      setSaveState("saved");
+    } catch {
+      setSaveState("failed");
     }
   }
 
@@ -378,7 +433,9 @@ export default function ScanFillPage() {
             This is what you&apos;ll get
           </h2>
           <p className="text-xs text-[#7C6E67] mt-0.5">
-            Nothing has been sent anywhere. Exporting downloads a copy to your device.
+            {hasFillablePdf
+              ? "Approving downloads the same PDF with these values written into its fields — ready to print, email, or upload wherever the form is due. Nothing is sent anywhere by NEXUS."
+              : "This form has no fillable fields, so NEXUS gives you the values to copy across instead of a filled file."}
           </p>
 
           <div className="mt-4 bg-white rounded-2xl border border-[#E5DFD7] p-6">
@@ -438,7 +495,7 @@ export default function ScanFillPage() {
                 className="flex-1 min-w-[200px] py-2.5 bg-[#6E885B] text-white rounded-xl text-sm
                   font-semibold hover:bg-[#5C744B] disabled:opacity-50 transition-colors shadow-sm"
               >
-                {exporting ? "Preparing your PDF…" : "Approve & download filled PDF"}
+                {exporting ? "Preparing your PDF…" : "Approve & download the filled PDF"}
               </button>
             ) : (
               <button
@@ -480,21 +537,50 @@ export default function ScanFillPage() {
       )}
 
       {stage === "done" && (
-        <div className="mt-5 rounded-2xl border border-[#E1EAD8] bg-[#F3F6F1] p-6 text-center">
-          <p className="text-2xl">✓</p>
-          <p className="text-sm font-semibold text-[#4A5D3D] mt-2">
-            Downloaded {fileName}-filled.pdf
-          </p>
-          <p className="text-xs text-[#4A5D3D]/80 mt-1">
-            NEXUS didn&apos;t submit this anywhere — sending it on is up to you.
-          </p>
-          <button
-            onClick={reset}
-            className="mt-4 text-sm px-4 py-2 bg-white border border-[#E5DFD7] rounded-xl font-semibold
-              text-[#2E2724] hover:border-[#D95D39] transition-colors"
-          >
-            Fill another form
-          </button>
+        <div className="mt-5 rounded-2xl border border-[#E1EAD8] bg-[#F3F6F1] p-6">
+          <div className="text-center">
+            <p className="text-2xl">✓</p>
+            <p className="text-sm font-semibold text-[#4A5D3D] mt-2">
+              Downloaded {fileName}-filled.pdf
+            </p>
+            <p className="text-xs text-[#4A5D3D]/80 mt-1">
+              It&apos;s in your downloads folder. NEXUS didn&apos;t submit it anywhere — sending it on is up to you.
+            </p>
+          </div>
+
+          <div className="mt-5 bg-white/70 rounded-xl border border-[#E1EAD8] p-4">
+            <p className="text-xs font-semibold text-[#4A5D3D] uppercase tracking-wider">What next</p>
+            <ul className="mt-2 space-y-1 text-sm text-[#2E2724]">
+              <li>• Print it and sign where the form asks.</li>
+              <li>• Email it or upload it to the portal that requested it.</li>
+              <li>• Keep a copy here so you can find it again.</li>
+            </ul>
+          </div>
+
+          <div className="mt-4 flex gap-2 flex-wrap justify-center">
+            <button
+              onClick={saveToDocuments}
+              disabled={saveState === "saving" || saveState === "saved"}
+              className="text-sm px-4 py-2 bg-[#6E885B] text-white rounded-xl font-semibold
+                hover:bg-[#5C744B] disabled:opacity-60 transition-colors shadow-sm"
+            >
+              {saveState === "saving"
+                ? "Saving to Documents…"
+                : saveState === "saved"
+                ? "Saved to Documents ✓"
+                : "Save a copy to Documents"}
+            </button>
+            <button
+              onClick={reset}
+              className="text-sm px-4 py-2 bg-white border border-[#E5DFD7] rounded-xl font-semibold
+                text-[#2E2724] hover:border-[#D95D39] transition-colors"
+            >
+              Fill another form
+            </button>
+          </div>
+          {saveState === "failed" && (
+            <p className="mt-2 text-xs text-red-600 text-center">Couldn&apos;t save the copy. Try again.</p>
+          )}
         </div>
       )}
     </div>
@@ -506,7 +592,7 @@ function Steps({ stage }: { stage: Stage }) {
     { key: "upload", label: "Scan" },
     { key: "review", label: "Review" },
     { key: "preview", label: "Preview" },
-    { key: "done", label: "Export" },
+    { key: "done", label: "Download" },
   ];
   const currentIndex = steps.findIndex((s) => s.key === stage);
 

@@ -127,6 +127,22 @@ export default function DocumentDetailPage() {
     setSaving(false);
   }
 
+  async function confirmAll() {
+    const pending = fields.filter((f) => (f.confidence ?? 1) < LOW_CONFIDENCE_THRESHOLD);
+    if (pending.length === 0) return;
+    setSaving(true);
+    await supabase
+      .from("document_fields")
+      .update({ confidence: 1 })
+      .in("id", pending.map((f) => f.id));
+    setFields((prev) =>
+      prev.map((f) => ((f.confidence ?? 1) < LOW_CONFIDENCE_THRESHOLD ? { ...f, confidence: 1 } : f))
+    );
+    await logActivity(`You confirmed ${pending.length} detail${pending.length === 1 ? "" : "s"} on ${doc?.file_name}`);
+    setEditingId(null);
+    setSaving(false);
+  }
+
   async function deleteDocument() {
     if (!doc) return;
     setDeleting(true);
@@ -230,15 +246,29 @@ export default function DocumentDetailPage() {
 
       {lowConfidenceFields.length > 0 && (
         <div className="mt-5 rounded-2xl border border-[#F9DFE6] bg-[#FDF1F5]/50 px-4 py-3.5">
-          <p className="text-sm font-semibold text-[#C05C7B]">
-            {lowConfidenceFields.length === 1
-              ? "NEXUS wasn't sure about 1 detail"
-              : `NEXUS wasn't sure about ${lowConfidenceFields.length} details`}
-          </p>
-          <p className="text-xs text-[#7C6E67] mt-0.5">
-            They&apos;re marked below. Check each one and confirm or correct it — NEXUS will use your
-            version from then on.
-          </p>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm font-semibold text-[#C05C7B]">
+                {lowConfidenceFields.length === 1
+                  ? "NEXUS wasn't sure about 1 detail — please check it"
+                  : `NEXUS wasn't sure about ${lowConfidenceFields.length} details — please check them`}
+              </p>
+              <p className="text-xs text-[#7C6E67] mt-0.5 leading-relaxed">
+                A blurry scan or handwriting can make a value a guess. NEXUS uses these values to
+                answer your questions and fill forms, so it won&apos;t treat them as certain until you
+                do. The marked rows below show how sure it was — confirm the ones that are right and
+                correct the rest.
+              </p>
+            </div>
+            <button
+              onClick={confirmAll}
+              disabled={saving}
+              className="text-xs px-3 py-1.5 bg-white border border-[#F9DFE6] rounded-full font-semibold
+                text-[#C05C7B] hover:bg-[#FDF1F5] transition-colors disabled:opacity-50 shrink-0"
+            >
+              {saving ? "Saving…" : "All look right — confirm all"}
+            </button>
+          </div>
         </div>
       )}
 
@@ -254,6 +284,8 @@ export default function DocumentDetailPage() {
                 <p className="text-sm text-[#7C6E67]">
                   {doc.status === "processing" || doc.status === "uploaded"
                     ? "NEXUS is still reading this document."
+                    : doc.status === "failed"
+                    ? "NEXUS couldn't read this file. Go back to Documents and hit Retry, or upload a clearer copy."
                     : "NEXUS couldn't read any details from this document."}
                 </p>
               </div>

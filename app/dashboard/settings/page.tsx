@@ -1,8 +1,16 @@
 "use client";
 
 import { createClient } from "@/lib/supabase-browser";
+import { reverseGeocode } from "@/lib/weather";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+
+type CalendarStatus = {
+  connected: boolean;
+  healthy?: boolean;
+  email?: string | null;
+  problem?: string;
+};
 
 export default function SettingsPage() {
   return (
@@ -40,11 +48,14 @@ function SettingsPageInner() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [calendarStatus, setCalendarStatus] = useState<CalendarStatus | null>(null);
   const [calendarLoading, setCalendarLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [testState, setTestState] = useState<{ phase: "idle" | "sending" | "sent" | "failed"; link?: string; message?: string }>({ phase: "idle" });
+  const [locating, setLocating] = useState(false);
+  const [locateMessage, setLocateMessage] = useState("");
   const calendarJustConnected = searchParams.get("calendar_connected") === "1";
-  const calendarError = searchParams.get("calendar_error") === "1";
+  const calendarError = searchParams.get("calendar_error");
 
   useEffect(() => {
     (async () => {
@@ -63,27 +74,94 @@ function SettingsPageInner() {
     })();
   }, [supabase]);
 
+  async function loadCalendarStatus() {
+    setCalendarLoading(true);
+    try {
+      const res = await fetch("/api/calendar/status?verify=1");
+      const data = (await res.json()) as CalendarStatus;
+      setCalendarStatus(data);
+    } catch {
+      setCalendarStatus({ connected: false, problem: "Couldn't check the connection. Try again." });
+    }
+    setCalendarLoading(false);
+  }
+
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/calendar/status");
-        const data = await res.json();
-        setCalendarConnected(!!data.connected);
-      } catch {
-        setCalendarConnected(false);
-      }
-      setCalendarLoading(false);
-    })();
+    loadCalendarStatus();
   }, []);
 
   async function disconnectCalendar() {
     setDisconnecting(true);
     try {
       await fetch("/api/calendar/disconnect", { method: "POST" });
-      setCalendarConnected(false);
+      setCalendarStatus({ connected: false });
+      setTestState({ phase: "idle" });
     } finally {
       setDisconnecting(false);
     }
+  }
+
+  // Proves the whole chain — token, permission level, Google's API, the right
+  // calendar — with something the user can open and see.
+  async function sendTestEvent() {
+    setTestState({ phase: "sending" });
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateISO = tomorrow.toISOString().slice(0, 10);
+    try {
+      const res = await fetch("/api/calendar/create-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "NEXUS test event — safe to delete",
+          description: "NEXUS created this to confirm your Google Calendar connection works. Delete it whenever you like.",
+          dateISO,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTestState({ phase: "failed", message: data.error || "Couldn't create the test event." });
+        if (data.disconnected) loadCalendarStatus();
+        return;
+      }
+      setTestState({ phase: "sent", link: data.htmlLink || undefined });
+    } catch {
+      setTestState({ phase: "failed", message: "Couldn't reach NEXUS. Check your connection." });
+    }
+  }
+
+  function useMyLocation() {
+    if (!("geolocation" in navigator)) {
+      setLocateMessage("This browser can't share your location. Type your city instead.");
+      return;
+    }
+    setLocating(true);
+    setLocateMessage("");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const place = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+          if (!place) {
+            setLocateMessage("Found your position but not a city name for it. Type your city instead.");
+          } else {
+            setCity(place.city);
+            setLocateMessage(`Set to ${place.label}. Save changes to keep it.`);
+          }
+        } catch {
+          setLocateMessage("Couldn't turn your position into a city. Type it instead.");
+        }
+        setLocating(false);
+      },
+      (err) => {
+        setLocateMessage(
+          err.code === err.PERMISSION_DENIED
+            ? "Location access was blocked. Allow it in your browser, or type your city."
+            : "Couldn't get your location. Type your city instead."
+        );
+        setLocating(false);
+      },
+      { timeout: 10000, maximumAge: 300000 }
+    );
   }
 
   async function savePermission(level: string) {
@@ -225,15 +303,26 @@ function SettingsPageInner() {
           </div>
           <div>
             <label className="block text-xs font-semibold text-[#7C6E67] mb-1">City</label>
-            <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="e.g. New Delhi"
-              className="w-full px-3 py-2 border border-[#E5DFD7] rounded-xl text-sm
-                focus:outline-none focus:ring-2 focus:ring-[#D95D39] focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
-            />
+            <div className="flex gap-2">
+              <input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. New Delhi"
+                className="flex-1 px-3 py-2 border border-[#E5DFD7] rounded-xl text-sm
+                  focus:outline-none focus:ring-2 focus:ring-[#D95D39] focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
+              />
+              <button
+                type="button"
+                onClick={useMyLocation}
+                disabled={locating}
+                className="text-xs px-3 py-2 border border-[#E5DFD7] rounded-xl font-semibold text-[#2E2724]
+                  hover:border-[#D95D39] transition-colors bg-white disabled:opacity-50 whitespace-nowrap"
+              >
+                {locating ? "Locating…" : "📍 Use my location"}
+              </button>
+            </div>
             <p className="text-[11px] text-[#7C6E67]/70 mt-1">
-              Used to check local weather when NEXUS suggests the best day to handle a renewal.
+              {locateMessage || "Used for the local weather on Home and when NEXUS suggests the best day to handle a renewal."}
             </p>
           </div>
           <button
@@ -396,34 +485,116 @@ function SettingsPageInner() {
         )}
         {calendarError && (
           <p className="mt-3 text-sm text-red-600 font-medium">
-            Couldn&apos;t connect Google Calendar. Please try again.
+            {calendarError === "denied"
+              ? "You didn't grant calendar access, so nothing was connected. Try again and allow both calendar permissions."
+              : calendarError === "state"
+              ? "That connection attempt expired or didn't start from NEXUS. Start again from this page."
+              : "Couldn't connect Google Calendar. Please try again."}
           </p>
         )}
 
         {calendarLoading ? (
-          <p className="mt-3 text-xs text-[#7C6E67]/60">Checking connection...</p>
-        ) : calendarConnected ? (
-          <div className="mt-3 flex items-center gap-3">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-[#F3F6F1] text-[#6E885B] font-semibold">
-              Connected
-            </span>
-            <button
-              onClick={disconnectCalendar}
-              disabled={disconnecting}
-              className="text-sm px-4 py-2 border border-[#E5DFD7] rounded-xl text-[#2E2724]
-                hover:bg-[#FAF8F5] transition-colors bg-white font-semibold cursor-pointer disabled:opacity-50"
-            >
-              {disconnecting ? "Disconnecting..." : "Disconnect"}
-            </button>
+          <p className="mt-3 text-xs text-[#7C6E67]/60 flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded-full border-[1.5px] border-current border-t-transparent animate-spin" />
+            Checking with Google…
+          </p>
+        ) : calendarStatus?.connected ? (
+          <div className="mt-3 space-y-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span
+                className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                  calendarStatus.healthy
+                    ? "bg-[#F3F6F1] text-[#6E885B]"
+                    : "bg-[#FEF9EC] text-[#D48C2B]"
+                }`}
+              >
+                {calendarStatus.healthy ? "Connected and working" : "Connected, but not responding"}
+              </span>
+              {calendarStatus.email && (
+                <span className="text-xs text-[#7C6E67]">
+                  as <span className="font-semibold text-[#2E2724]">{calendarStatus.email}</span>
+                </span>
+              )}
+            </div>
+
+            {!calendarStatus.healthy && calendarStatus.problem && (
+              <p className="text-xs text-[#D48C2B]">{calendarStatus.problem}</p>
+            )}
+
+            {calendarStatus.healthy && !calendarStatus.email && (
+              <p className="text-xs text-[#7C6E67]">
+                Connected before NEXUS asked which account — reconnect once to show the account name.
+              </p>
+            )}
+
+            <div className="rounded-xl bg-[#FCFAF7] border border-[#E5DFD7] p-3.5">
+              <p className="text-xs font-semibold text-[#2E2724]">Check it end-to-end</p>
+              <p className="text-[11px] text-[#7C6E67] mt-0.5">
+                NEXUS adds an all-day event for tomorrow to this account&apos;s main calendar. If it shows
+                up there, everything is working.{" "}
+                {agentPermission !== "execute" && (
+                  <span className="text-[#D48C2B]">Needs the &ldquo;Execute&rdquo; permission above.</span>
+                )}
+              </p>
+              <div className="mt-2.5 flex items-center gap-3 flex-wrap">
+                <button
+                  onClick={sendTestEvent}
+                  disabled={testState.phase === "sending" || agentPermission !== "execute"}
+                  className="text-xs px-3 py-1.5 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-lg font-semibold
+                    transition-colors disabled:opacity-40"
+                >
+                  {testState.phase === "sending" ? "Adding…" : "Add a test event"}
+                </button>
+                {testState.phase === "sent" && (
+                  <span className="text-xs text-[#6E885B] font-medium">
+                    Added ✓{" "}
+                    {testState.link && (
+                      <a href={testState.link} target="_blank" rel="noreferrer" className="text-[#D95D39] hover:underline font-semibold">
+                        Open it in Google Calendar →
+                      </a>
+                    )}
+                  </span>
+                )}
+                {testState.phase === "failed" && (
+                  <span className="text-xs text-red-600 font-medium">{testState.message}</span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={disconnectCalendar}
+                disabled={disconnecting}
+                className="text-sm px-4 py-2 border border-[#E5DFD7] rounded-xl text-[#2E2724]
+                  hover:bg-[#FAF8F5] transition-colors bg-white font-semibold cursor-pointer disabled:opacity-50"
+              >
+                {disconnecting ? "Disconnecting…" : "Disconnect"}
+              </button>
+              <a
+                href="/api/auth/google"
+                className="text-sm px-4 py-2 text-[#7C6E67] hover:text-[#2E2724] transition-colors font-medium"
+              >
+                Reconnect
+              </a>
+            </div>
           </div>
         ) : (
-          <a
-            href="/api/auth/google"
-            className="mt-3 inline-block text-sm px-4 py-2 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-xl font-medium
-              transition-colors shadow-sm"
-          >
-            Connect Google Calendar
-          </a>
+          <div className="mt-3">
+            {calendarStatus?.problem && (
+              <p className="mb-2 text-xs text-[#D48C2B]">{calendarStatus.problem}</p>
+            )}
+            <a
+              href="/api/auth/google"
+              className="inline-block text-sm px-4 py-2 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-xl font-medium
+                transition-colors shadow-sm"
+            >
+              Connect Google Calendar
+            </a>
+            <p className="text-[11px] text-[#7C6E67]/70 mt-2">
+              Google will ask for permission to see when you&apos;re busy and to add events. NEXUS never
+              reads the contents of your existing events.
+            </p>
+          </div>
         )}
       </section>
 

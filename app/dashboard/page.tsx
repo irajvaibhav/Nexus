@@ -7,8 +7,8 @@ import { mergeCategories, type CustomCategoryRow } from "@/lib/categories";
 import { daysLeft, daysLabel, badgeColorFor } from "@/lib/dates";
 import { docHealth, LOW_CONFIDENCE_THRESHOLD } from "@/lib/doc-status";
 import { detectConflicts, type ConflictGroup } from "@/lib/conflicts";
-import { geocodeCity, getDailyForecast, bestUpcomingDay, type DailyForecast } from "@/lib/weather";
-import { useEffect, useState } from "react";
+import { geocodeCity, getDailyForecast, bestUpcomingDay, weatherEmoji, type DailyForecast } from "@/lib/weather";
+import { useCallback, useEffect, useState } from "react";
 
 type Deadline = {
   id: string;
@@ -45,10 +45,14 @@ export default function DashboardPage() {
   const [askInput, setAskInput] = useState("");
   const [city, setCity] = useState("");
   const [agentPermission, setAgentPermission] = useState("recommend");
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [forecast, setForecast] = useState<DailyForecast[]>([]);
-  const [weatherError, setWeatherError] = useState(false);
+  const [weatherLabel, setWeatherLabel] = useState("");
+  const [weatherState, setWeatherState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [weatherError, setWeatherError] = useState("");
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [addingToCalendar, setAddingToCalendar] = useState(false);
+  const [addedLink, setAddedLink] = useState<string | null>(null);
   const [addedToCalendar, setAddedToCalendar] = useState(false);
   const [calendarError, setCalendarError] = useState("");
 
@@ -95,26 +99,38 @@ export default function DashboardPage() {
       const p = profile as { city?: string; agent_permission?: string } | null;
       setCity(p?.city || "");
       setAgentPermission(p?.agent_permission || "recommend");
+      setProfileLoaded(true);
     }
     load();
   }, [supabase]);
 
-  useEffect(() => {
-    if (!city) return;
-    (async () => {
-      try {
-        const geo = await geocodeCity(city);
-        if (!geo) {
-          setWeatherError(true);
-          return;
-        }
-        const days = await getDailyForecast(geo.lat, geo.lon);
-        setForecast(days);
-      } catch {
-        setWeatherError(true);
+  const loadWeather = useCallback(async () => {
+    if (!city) {
+      setWeatherState("idle");
+      return;
+    }
+    setWeatherState("loading");
+    setWeatherError("");
+    try {
+      const geo = await geocodeCity(city);
+      if (!geo) {
+        setWeatherError(`Couldn't find a place called "${city}". Check the spelling in Settings.`);
+        setWeatherState("error");
+        return;
       }
-    })();
+      const days = await getDailyForecast(geo.lat, geo.lon);
+      setForecast(days);
+      setWeatherLabel(geo.label);
+      setWeatherState("ready");
+    } catch (err) {
+      setWeatherError(err instanceof Error ? err.message : "Couldn't load the forecast.");
+      setWeatherState("error");
+    }
   }, [city]);
+
+  useEffect(() => {
+    loadWeather();
+  }, [loadWeather]);
 
   useEffect(() => {
     (async () => {
@@ -152,9 +168,12 @@ export default function DashboardPage() {
   const verifiedCount = docs.length - docsNeedingAttention.length - stillReadingCount;
   const attentionCount = docsNeedingAttention.length + conflicts.length;
 
-  const forecastWithinWindow = nearestDays !== null
-    ? forecast.filter((_, i) => i <= Math.min(nearestDays, forecast.length - 1))
-    : [];
+  // Suggest a day before the deadline when it falls inside the forecast; if it
+  // has already passed (or is further out than the forecast) any good day will do.
+  const forecastWithinWindow =
+    nearestDays !== null && nearestDays >= 0
+      ? forecast.filter((_, i) => i <= Math.min(nearestDays, forecast.length - 1))
+      : forecast;
   const suggestedDay = bestUpcomingDay(forecastWithinWindow);
   const canExecute = agentPermission === "execute";
 
@@ -178,8 +197,12 @@ export default function DashboardPage() {
         }),
       });
       const data = await res.json();
-      if (res.ok) setAddedToCalendar(true);
-      else setCalendarError(data.error || "Couldn't add it to your calendar.");
+      if (res.ok) {
+        setAddedToCalendar(true);
+        setAddedLink(data.htmlLink || null);
+      } else {
+        setCalendarError(data.error || "Couldn't add it to your calendar.");
+      }
     } finally {
       setAddingToCalendar(false);
     }
@@ -200,6 +223,63 @@ export default function DashboardPage() {
         {greeting()}, {name} 👋
       </h1>
       <p className="text-[#7C6E67] mt-1 text-sm">{summary}</p>
+
+      {/* Ask NEXUS is the core of the product, so it sits first and full-width. */}
+      <section className="mt-5 rounded-2xl border border-[#E5DFD7] bg-white p-5 shadow-sm shadow-[#D95D39]/5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-base font-serif font-semibold text-[#1A1412] flex items-center gap-2">
+              <span className="w-7 h-7 rounded-lg bg-[#D95D39] text-white flex items-center justify-center text-sm">💬</span>
+              Ask NEXUS
+            </h2>
+            <p className="text-xs text-[#7C6E67] mt-1">
+              Ask anything about your documents — numbers, expiry dates, what you need for a task.
+              Answers come from what you&apos;ve uploaded, with the source shown.
+            </p>
+          </div>
+          <Link href="/dashboard/ask" className="text-xs text-[#D95D39] hover:underline font-semibold">
+            Open full chat →
+          </Link>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <input
+            type="text"
+            value={askInput}
+            onChange={(e) => setAskInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && goAsk()}
+            placeholder="Ask NEXUS… e.g. When does my car insurance expire?"
+            className="flex-1 px-4 py-2.5 bg-[#FCFAF7] border border-[#E5DFD7]
+              rounded-xl text-sm focus:outline-none focus:ring-2
+              focus:ring-[#D95D39] focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
+          />
+          <button
+            onClick={() => goAsk()}
+            className="px-4 py-2.5 bg-[#D95D39] text-white rounded-xl hover:bg-[#C24E2B] transition-colors text-sm font-semibold"
+          >
+            Ask
+          </button>
+        </div>
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {[
+            "What's my passport number?",
+            "When does my insurance expire?",
+            "What do I need for a car loan?",
+            "Documents expiring this month?",
+          ].map((q) => (
+            <button
+              key={q}
+              onClick={() => goAsk(q)}
+              className="text-[11px] px-2.5 py-1 rounded-full border border-[#E5DFD7] text-[#7C6E67]
+                hover:border-[#D95D39] hover:text-[#D95D39] transition-colors bg-white"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2.5 text-[11px] text-[#7C6E67]/70">
+          You can also speak, or send a photo of a document, from the full chat.
+        </p>
+      </section>
 
       {/* The single most important thing, chosen over everything else on the page. */}
       {conflicts.length > 0 ? (
@@ -234,9 +314,9 @@ export default function DashboardPage() {
       ) : null}
 
       <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <QuickAction label="Scan a document" icon="📄" href="/dashboard/documents" />
-        <QuickAction label="Ask NEXUS" icon="💬" href="/dashboard/ask" />
+        <QuickAction label="Upload a document" icon="📄" href="/dashboard/documents" />
         <QuickAction label="Fill a form" icon="🖊️" href="/dashboard/scan" />
+        <QuickAction label="See reminders" icon="🔔" href="/dashboard/reminders" />
         <QuickAction label="Add a task" icon="✓" href="/dashboard/tasks" />
       </div>
 
@@ -333,14 +413,19 @@ export default function DashboardPage() {
                     like the easiest day to sort this out in {city} — {suggestedDay.description.toLowerCase()},{" "}
                     {suggestedDay.tempMin}–{suggestedDay.tempMax}°C, {suggestedDay.precipProbability}% chance of rain.
                   </p>
-                ) : city && !weatherError ? (
+                ) : weatherState === "loading" ? (
                   <p className="text-sm text-[#7C6E67]">Checking the forecast for {city}&hellip;</p>
+                ) : weatherState === "error" ? (
+                  <p className="text-sm text-[#7C6E67]">
+                    The forecast isn&apos;t available right now, so NEXUS can&apos;t suggest a day yet.{" "}
+                    <button onClick={loadWeather} className="text-[#D95D39] hover:underline font-medium">Try again</button>
+                  </p>
                 ) : (
                   <p className="text-sm text-[#7C6E67]">
                     <Link href="/dashboard/settings" className="text-[#D95D39] hover:underline font-medium">
-                      City add karo
+                      Add your city
                     </Link>{" "}
-                    — NEXUS timing suggestions better karega.
+                    and NEXUS will pick a good-weather day for this.
                   </p>
                 )}
 
@@ -373,6 +458,17 @@ export default function DashboardPage() {
                     )
                   )}
 
+                  {addedToCalendar && addedLink && (
+                    <a
+                      href={addedLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block text-center text-[11px] text-[#D95D39] hover:underline font-medium"
+                    >
+                      Open it in Google Calendar →
+                    </a>
+                  )}
+
                   {calendarError && (
                     <p className="text-[11px] text-red-600">{calendarError}</p>
                   )}
@@ -381,39 +477,14 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl border border-[#E5DFD7] overflow-hidden">
-            <div className="p-4 border-b border-[#E5DFD7]/60">
-              <h3 className="text-sm font-semibold text-[#1A1412] flex items-center gap-2">
-                💬 Ask NEXUS
-              </h3>
-            </div>
-            <div className="p-3 space-y-1.5">
-              <QuickQ text="What's my passport number?" onClick={goAsk} />
-              <QuickQ text="When does my insurance expire?" onClick={goAsk} />
-              <QuickQ text="Show my bank account details" onClick={goAsk} />
-              <QuickQ text="Documents expiring this month?" onClick={goAsk} />
-            </div>
-            <div className="p-3 border-t border-[#E5DFD7]/60">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={askInput}
-                  onChange={(e) => setAskInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && goAsk()}
-                  placeholder="Bol do / type karo..."
-                  className="flex-1 px-3 py-2 bg-[#FCFAF7] border border-[#E5DFD7]
-                    rounded-xl text-sm focus:outline-none focus:ring-2
-                    focus:ring-[#D95D39] focus:border-transparent text-[#2E2724] placeholder-[#7C6E67]/50"
-                />
-                <button
-                  onClick={() => goAsk()}
-                  className="px-3 py-2 bg-[#D95D39] text-white rounded-xl hover:bg-[#C24E2B] transition-colors"
-                >
-                  <span className="text-sm">➤</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          <WeatherCard
+            city={city}
+            label={weatherLabel}
+            state={profileLoaded ? weatherState : "loading"}
+            error={weatherError}
+            forecast={forecast}
+            onRetry={loadWeather}
+          />
 
           {openTasksCount > 0 && (
             <Link
@@ -476,14 +547,117 @@ function QuickAction({ label, icon, href }: { label: string; icon: string; href:
   );
 }
 
-function QuickQ({ text, onClick }: { text: string; onClick: (question: string) => void }) {
+function WeatherCard({ city, label, state, error, forecast, onRetry }: {
+  city: string;
+  label: string;
+  state: "idle" | "loading" | "ready" | "error";
+  error: string;
+  forecast: DailyForecast[];
+  onRetry: () => void;
+}) {
+  const today = forecast[0];
+  const best = bestUpcomingDay(forecast.slice(1));
+
   return (
-    <button
-      onClick={() => onClick(text)}
-      className="w-full text-left px-3 py-2 rounded-xl text-sm text-[#7C6E67]
-      hover:bg-[#F4EFEA] hover:text-[#D95D39] transition-all"
-    >
-      {text}
-    </button>
+    <div className="bg-white rounded-2xl border border-[#E5DFD7] overflow-hidden">
+      <div className="p-4 border-b border-[#E5DFD7]/60 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-[#1A1412]">
+          {state === "ready" && label ? `Weather in ${label.split(",")[0]}` : "Weather"}
+        </h3>
+        {state === "ready" && (
+          <button onClick={onRetry} className="text-[11px] text-[#7C6E67] hover:text-[#D95D39]" title="Refresh">
+            ↻
+          </button>
+        )}
+      </div>
+      <div className="p-4">
+        {state === "idle" && (
+          <p className="text-sm text-[#7C6E67]">
+            <Link href="/dashboard/settings" className="text-[#D95D39] hover:underline font-medium">
+              Add your city
+            </Link>{" "}
+            and NEXUS will show the local forecast and pick good days for errands.
+          </p>
+        )}
+
+        {state === "loading" && (
+          <div className="animate-pulse space-y-2.5" aria-label="Loading forecast">
+            <div className="h-7 w-2/3 rounded-lg bg-[#F4EFEA]" />
+            <div className="h-3.5 w-1/2 rounded bg-[#F4EFEA]" />
+            <div className="flex gap-2 mt-3">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex-1 h-12 rounded-xl bg-[#F4EFEA]" />
+              ))}
+            </div>
+            <p className="text-[11px] text-[#7C6E67]/70">Checking the forecast for {city}…</p>
+          </div>
+        )}
+
+        {state === "error" && (
+          <div>
+            <p className="text-sm text-[#2E2724] font-medium">Forecast unavailable</p>
+            <p className="text-xs text-[#7C6E67] mt-1">{error}</p>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={onRetry}
+                className="text-xs px-3 py-1.5 bg-[#D95D39] text-white rounded-lg font-semibold hover:bg-[#C24E2B]"
+              >
+                Try again
+              </button>
+              <Link
+                href="/dashboard/settings"
+                className="text-xs px-3 py-1.5 border border-[#E5DFD7] rounded-lg font-semibold text-[#2E2724] hover:border-[#D95D39]"
+              >
+                Change city
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {state === "ready" && today && (
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="text-3xl leading-none">{weatherEmoji(today.code)}</span>
+              <div>
+                <p className="text-lg font-semibold text-[#1A1412] leading-tight">
+                  {today.tempMin}–{today.tempMax}°C
+                </p>
+                <p className="text-xs text-[#7C6E67]">
+                  {today.description} · {today.precipProbability}% chance of rain today
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-5 gap-1.5">
+              {forecast.slice(1, 6).map((day) => (
+                <div
+                  key={day.date}
+                  className={`rounded-xl border px-1 py-2 text-center ${
+                    best?.date === day.date ? "border-[#E1EAD8] bg-[#F3F6F1]" : "border-[#E5DFD7]/70 bg-[#FCFAF7]"
+                  }`}
+                  title={`${day.description}, ${day.precipProbability}% rain`}
+                >
+                  <p className="text-[10px] font-semibold text-[#7C6E67]">
+                    {new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "short" })}
+                  </p>
+                  <p className="text-base leading-tight">{weatherEmoji(day.code)}</p>
+                  <p className="text-[10px] text-[#2E2724]">{day.tempMax}°</p>
+                </div>
+              ))}
+            </div>
+
+            {best && (
+              <p className="mt-3 text-[11px] text-[#6E885B]">
+                Best day for errands:{" "}
+                <span className="font-semibold">
+                  {new Date(`${best.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" })}
+                </span>{" "}
+                — {best.description.toLowerCase()}, {best.precipProbability}% rain.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

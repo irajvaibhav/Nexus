@@ -2,7 +2,7 @@ import { daysLeft } from "@/lib/dates";
 
 export const LOW_CONFIDENCE_THRESHOLD = 0.75;
 
-export type HealthKey = "processing" | "expired" | "expiring" | "needs_review" | "healthy";
+export type HealthKey = "processing" | "failed" | "expired" | "expiring" | "needs_review" | "healthy";
 
 export type DocHealth = {
   key: HealthKey;
@@ -16,6 +16,11 @@ const HEALTH: Record<HealthKey, Omit<DocHealth, "key">> = {
     label: "Reading…",
     badge: "bg-[#EFF7F6] text-[#4F8B82] border border-[#D5EAE7]",
     action: "NEXUS is still reading this document",
+  },
+  failed: {
+    label: "Couldn't read",
+    badge: "bg-[#F8F6F3] text-[#7C6E67] border border-[#ECE7E1]",
+    action: "NEXUS couldn't read this file — try again or upload a clearer copy",
   },
   expired: {
     label: "Action needed",
@@ -58,6 +63,7 @@ function resolveKey({
   expiryDates: string[];
 }): HealthKey {
   if (status === "processing" || status === "uploaded") return "processing";
+  if (status === "failed") return "failed";
 
   const soonest = expiryDates.length > 0 ? Math.min(...expiryDates.map(daysLeft)) : null;
   if (soonest !== null && soonest < 0) return "expired";

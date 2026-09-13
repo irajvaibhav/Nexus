@@ -1,4 +1,12 @@
-const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.freebusy";
+const CALENDAR_SCOPE = [
+  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/calendar.freebusy",
+  // Lets Settings show which Google account is connected.
+  "openid",
+  "https://www.googleapis.com/auth/userinfo.email",
+].join(" ");
+
+export const GOOGLE_STATE_COOKIE = "nexus_google_oauth_state";
 
 function getRedirectUri(): string {
   return process.env.GOOGLE_REDIRECT_URI!;
@@ -11,6 +19,7 @@ export function getGoogleAuthUrl(state: string): string {
     response_type: "code",
     access_type: "offline",
     prompt: "consent",
+    include_granted_scopes: "true",
     scope: CALENDAR_SCOPE,
     state,
   });
@@ -64,6 +73,13 @@ type StoredTokenRow = {
   expiry_date: string;
 };
 
+export class CalendarDisconnectedError extends Error {
+  constructor(message = "Google Calendar is no longer connected. Reconnect it from Settings.") {
+    super(message);
+    this.name = "CalendarDisconnectedError";
+  }
+}
+
 export async function getValidAccessToken(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
@@ -82,7 +98,16 @@ export async function getValidAccessToken(
 
   if (!row.refresh_token) return row.access_token;
 
-  const refreshed = await refreshAccessToken(row.refresh_token);
+  let refreshed: TokenResponse;
+  try {
+    refreshed = await refreshAccessToken(row.refresh_token);
+  } catch {
+    // The grant was revoked or expired. Keeping the row would leave Settings
+    // saying "Connected" while every calendar call fails.
+    await supabase.from("google_tokens").delete().eq("user_id", userId);
+    throw new CalendarDisconnectedError();
+  }
+
   const newExpiry = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
 
   await supabase
@@ -93,8 +118,39 @@ export async function getValidAccessToken(
   return refreshed.access_token;
 }
 
+async function googleJson(url: string, init: RequestInit): Promise<Record<string, unknown>> {
+  const res = await fetch(url, { ...init, signal: AbortSignal.timeout(10_000) });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  const error = data.error as { message?: string; status?: string } | string | undefined;
+  if (!res.ok || error) {
+    const message =
+      typeof error === "string"
+        ? error
+        : error?.message || `Google returned ${res.status}`;
+    if (res.status === 401 || res.status === 403) {
+      throw new CalendarDisconnectedError(
+        `Google rejected the request (${message}). Reconnect the calendar to grant access again.`
+      );
+    }
+    throw new Error(message);
+  }
+  return data;
+}
+
+// The connected Google account. Older grants lack the email scope; null then.
+export async function getGoogleAccountEmail(accessToken: string): Promise<string | null> {
+  try {
+    const data = await googleJson("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    return typeof data.email === "string" ? data.email : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getFreeBusy(accessToken: string, timeMin: string, timeMax: string): Promise<{ start: string; end: string }[]> {
-  const res = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+  const data = await googleJson("https://www.googleapis.com/calendar/v3/freeBusy", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -106,9 +162,15 @@ export async function getFreeBusy(accessToken: string, timeMin: string, timeMax:
       items: [{ id: "primary" }],
     }),
   });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.calendars?.primary?.busy || [];
+  const calendars = data.calendars as { primary?: { busy?: { start: string; end: string }[] } } | undefined;
+  return calendars?.primary?.busy || [];
+}
+
+// A cheap round-trip that proves the token works against the user's calendar.
+export async function probeCalendarAccess(accessToken: string): Promise<void> {
+  const now = new Date();
+  const later = new Date(now.getTime() + 60_000);
+  await getFreeBusy(accessToken, now.toISOString(), later.toISOString());
 }
 
 export async function isDayFree(accessToken: string, dateISO: string): Promise<boolean> {
@@ -118,11 +180,25 @@ export async function isDayFree(accessToken: string, dateISO: string): Promise<b
   return busy.length === 0;
 }
 
+function nextDayISO(dateISO: string): string {
+  const d = new Date(`${dateISO}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+export type CreatedEvent = { id: string; htmlLink: string | null };
+
 export async function createCalendarEvent(
   accessToken: string,
   event: { title: string; description?: string; dateISO: string }
-): Promise<string> {
-  const res = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+): Promise<CreatedEvent> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(event.dateISO)) {
+    throw new Error(`Invalid date "${event.dateISO}" — expected YYYY-MM-DD`);
+  }
+
+  // All-day events use an exclusive end date. With start == end Google
+  // rejects the event as an empty range, so nothing ever reached the calendar.
+  const data = await googleJson("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -132,10 +208,13 @@ export async function createCalendarEvent(
       summary: event.title,
       description: event.description || "Created by NEXUS",
       start: { date: event.dateISO },
-      end: { date: event.dateISO },
+      end: { date: nextDayISO(event.dateISO) },
+      reminders: { useDefault: true },
     }),
   });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.id;
+
+  return {
+    id: String(data.id),
+    htmlLink: typeof data.htmlLink === "string" ? data.htmlLink : null,
+  };
 }
