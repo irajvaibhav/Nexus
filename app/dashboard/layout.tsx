@@ -131,17 +131,13 @@ export default function DashboardLayout({
       </aside>
 
       <main className="flex-1 min-h-screen ml-[96px]">
-        <div className={`px-8 pt-8 max-w-6xl mx-auto ${onAskPage ? "pb-8" : "pb-32"}`}>
+        <div className="px-8 pt-8 pb-10 max-w-6xl mx-auto">
           {children}
-        </div>
 
-        {!onAskPage && (
-          <div className="fixed bottom-6 left-[96px] right-0 flex justify-center px-6 pointer-events-none z-30">
+          {!onAskPage && (
             <form
               onSubmit={(e) => { e.preventDefault(); submitAsk(); }}
-              className="pointer-events-auto w-full max-w-xl flex items-center gap-2 glass rounded-2xl
-                border border-white/70 shadow-2xl shadow-[#0F172A]/15 pl-4 pr-2 py-2 transition-shadow focus-within:shadow-2xl
-                focus-within:border-[#2563EB]/40"
+              className="mt-8 flex items-center gap-2 card pl-4 pr-2 py-2 focus-within:border-[#2563EB]/40 transition-colors"
             >
               <SparkleIcon className="w-5 h-5 text-[#2563EB] shrink-0" />
               <input
@@ -165,8 +161,8 @@ export default function DashboardLayout({
                 <ArrowUpIcon className="w-5 h-5" />
               </button>
             </form>
-          </div>
-        )}
+          )}
+        </div>
       </main>
     </div>
   );
