@@ -96,8 +96,8 @@ function SignupInner() {
 
   return (
     <AuthShell mode="signup">
-      <h2 className="text-lg font-serif font-semibold text-[#1A1412]">Create your account</h2>
-      <p className="text-xs text-[#7C6E67] mt-0.5 mb-5">Takes a minute. Your documents stay private to you.</p>
+      <h2 className="text-2xl font-serif font-semibold tracking-tight text-[#1A1412]">Create your account</h2>
+      <p className="text-sm text-[#7C6E67] mt-1 mb-6">Takes a minute. Your documents stay private to you.</p>
 
       <GoogleButton mode="signup" />
       <OrDivider />
@@ -171,8 +171,9 @@ function SignupInner() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2.5 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-xl
-            font-semibold text-sm disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
+          className="w-full py-3 bg-[#D95D39] hover:bg-[#C24E2B] text-white rounded-xl
+            font-semibold text-sm disabled:opacity-50 transition-all shadow-sm hover:-translate-y-0.5
+            hover:shadow-lg hover:shadow-[#D95D39]/25 cursor-pointer"
         >
           {loading ? "Creating your account…" : "Create account"}
         </button>
