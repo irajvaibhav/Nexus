@@ -10,9 +10,10 @@ export default async function Landing() {
   if (user) redirect("/dashboard");
 
   return (
-    <div className="relative min-h-screen bg-[#F6F7F9] overflow-clip">
+    <div className="relative min-h-screen canvas overflow-clip">
       <div aria-hidden className="blob blob-a" />
       <div aria-hidden className="blob blob-b" />
+      <div aria-hidden className="blob blob-c" />
 
       <header className="relative z-10 max-w-7xl mx-auto px-6 h-[72px] flex items-center justify-between">
         <NexusWordmark />

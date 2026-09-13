@@ -84,8 +84,8 @@ export default function DashboardLayout({
   const onAskPage = pathname === "/dashboard/ask" || pathname === "/dashboard";
 
   return (
-    <div className="h-screen overflow-clip flex bg-[#F6F7F9]">
-      <aside className="w-[96px] flex flex-col items-center fixed inset-y-0 left-0 bg-white border-r border-[#E6E8EE] z-20 py-4">
+    <div className="h-screen overflow-clip flex canvas">
+      <aside className="w-[96px] flex flex-col items-center fixed inset-y-0 left-0 rail z-20 py-4">
         <Link href="/dashboard" title="NEXUS" className="hover:scale-105 transition-transform">
           <NexusMark size={48} />
         </Link>
@@ -176,6 +176,7 @@ export default function DashboardLayout({
       <main className="flex-1 ml-[96px] h-screen flex flex-col relative overflow-clip">
         <div aria-hidden className="blob blob-a blob-faint" />
         <div aria-hidden className="blob blob-b blob-faint" />
+        <div aria-hidden className="blob blob-c blob-faint" />
         <div ref={scrollRef} className={`relative flex-1 min-h-0 ${pathname === "/dashboard/ask" ? "overflow-clip" : "overflow-y-auto"}`}>
           <div className={`px-8 pt-8 max-w-6xl mx-auto ${pathname === "/dashboard/ask" ? "h-full pb-4" : "pb-10"}`}>
             {children}

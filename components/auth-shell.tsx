@@ -37,7 +37,7 @@ export function AuthShell({ mode, openEmail, children }: { mode: Mode; openEmail
   const copy = COPY[mode];
 
   return (
-    <div className="relative min-h-screen bg-[#F6F7F9] overflow-hidden flex items-center justify-center px-4 py-10">
+    <div className="relative min-h-screen canvas overflow-clip flex items-center justify-center px-4 py-10">
       <Backdrop />
 
       <div className="relative w-full max-w-[440px] bg-white rounded-3xl border border-[#E6E8EE] shadow-2xl shadow-[#0F172A]/10 px-8 py-9 animate-fade-in-up">
