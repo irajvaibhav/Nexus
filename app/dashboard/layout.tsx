@@ -7,7 +7,7 @@ import {
   HomeIcon, DocumentsIcon, ChatIcon, ScanIcon, BellIcon,
   CheckSquareIcon, ActivityIcon, SlidersIcon, LogoutIcon, MicIcon, ArrowUpIcon, SparkleIcon,
 } from "@/components/icons";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NexusMark } from "@/components/brand";
 
 const navItems = [
@@ -33,6 +33,27 @@ export default function DashboardLayout({
   const [email, setEmail] = useState("");
   const [ask, setAsk] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // The app is a fixed frame: the rail and the Ask footer never move, only
+  // the content column scrolls. Lock the window so a stray offset from an
+  // earlier page can never shift the frame, and start each page at the top.
+  useEffect(() => {
+    const html = document.documentElement;
+    const prev = { html: html.style.overflow, body: document.body.style.overflow };
+    html.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    window.scrollTo(0, 0);
+    return () => {
+      html.style.overflow = prev.html;
+      document.body.style.overflow = prev.body;
+    };
+  }, []);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+    setMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     async function getUser() {
@@ -63,7 +84,7 @@ export default function DashboardLayout({
   const onAskPage = pathname === "/dashboard/ask" || pathname === "/dashboard";
 
   return (
-    <div className="min-h-screen flex bg-[#F6F7F9]">
+    <div className="h-screen overflow-hidden flex bg-[#F6F7F9]">
       <aside className="w-[96px] flex flex-col items-center fixed inset-y-0 left-0 bg-white border-r border-[#E6E8EE] z-20 py-4">
         <Link href="/dashboard" title="NEXUS" className="hover:scale-105 transition-transform">
           <NexusMark size={48} />
@@ -155,7 +176,7 @@ export default function DashboardLayout({
       <main className="flex-1 ml-[96px] h-screen flex flex-col relative overflow-hidden">
         <div aria-hidden className="blob blob-a blob-faint" />
         <div aria-hidden className="blob blob-b blob-faint" />
-        <div className={`relative flex-1 min-h-0 ${pathname === "/dashboard/ask" ? "overflow-hidden" : "overflow-y-auto"}`}>
+        <div ref={scrollRef} className={`relative flex-1 min-h-0 ${pathname === "/dashboard/ask" ? "overflow-hidden" : "overflow-y-auto"}`}>
           <div className={`px-8 pt-8 max-w-6xl mx-auto ${pathname === "/dashboard/ask" ? "h-full pb-4" : "pb-10"}`}>
             {children}
           </div>
