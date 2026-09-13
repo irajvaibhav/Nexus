@@ -272,7 +272,7 @@ function AskNexus() {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-72px)] animate-fade-in-up">
+    <div className="max-w-3xl mx-auto flex flex-col h-full min-h-0 animate-fade-in-up">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Ask NEXUS</h1>
         {messages.length > 0 && (
@@ -286,7 +286,7 @@ function AskNexus() {
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-4 pr-1">
         {loadingHistory ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-sm text-[#64748B]/60">Loading chat history...</p>
@@ -395,7 +395,7 @@ function AskNexus() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="sticky bottom-0 bg-[#F6F7F9] pt-2">
+      <div className="shrink-0 pt-2">
         {attachError && (
           <p className="mb-2 text-xs text-red-600 font-medium">{attachError}</p>
         )}
