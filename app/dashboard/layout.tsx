@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import {
   HomeIcon, DocumentsIcon, ChatIcon, ScanIcon, BellIcon,
-  CheckSquareIcon, ActivityIcon, GearIcon, LogoutIcon,
+  CheckSquareIcon, ActivityIcon, GearIcon, LogoutIcon, MicIcon, ArrowUpIcon, SparkleIcon,
 } from "@/components/icons";
 import { useEffect, useState } from "react";
 
@@ -143,26 +143,26 @@ export default function DashboardLayout({
                 border border-[#E6E8EE] shadow-xl shadow-[#0F172A]/10 pl-4 pr-2 py-2 transition-shadow focus-within:shadow-2xl
                 focus-within:border-[#2563EB]/40"
             >
-              <span className="text-[#2563EB]">✦</span>
+              <SparkleIcon className="w-5 h-5 text-[#2563EB] shrink-0" />
               <input
                 value={ask}
                 onChange={(e) => setAsk(e.target.value)}
                 placeholder="Ask NEXUS anything, e.g. 'when does my insurance expire?'"
-                className="flex-1 bg-transparent text-sm focus:outline-none text-[#1E293B] placeholder-[#94A3B8]"
+                className="flex-1 py-1.5 bg-transparent text-[15px] focus:outline-none text-[#1E293B] placeholder-[#94A3B8]"
               />
               <Link
                 href="/dashboard/ask?voice=1"
-                className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[#E6E8EE] text-xs
-                  font-medium text-[#1E293B] hover:bg-[#F8FAFC]"
+                className="hidden sm:flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-[#E6E8EE] text-sm
+                  font-medium text-[#1E293B] hover:bg-[#F8FAFC] transition-colors"
               >
-                🎙 Voice
+                <MicIcon className="w-[18px] h-[18px]" /> Voice
               </Link>
               <button
                 type="submit"
-                className="w-9 h-9 rounded-xl bg-[#2563EB] text-white flex items-center justify-center hover:bg-[#1D4ED8]"
+                className="w-11 h-11 rounded-xl bg-[#2563EB] text-white flex items-center justify-center hover:bg-[#1D4ED8] transition-colors"
                 aria-label="Ask"
               >
-                ↑
+                <ArrowUpIcon className="w-5 h-5" />
               </button>
             </form>
           </div>

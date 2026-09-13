@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-browser";
+import { PaperclipIcon, MicIcon, CameraIcon, ArrowUpIcon, SparkleIcon } from "@/components/icons";
 import { splitSensitive } from "@/lib/sensitive";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, useRef, useEffect } from "react";
@@ -292,7 +293,7 @@ function AskNexus() {
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-14 h-14 rounded-2xl bg-[#0F172A] text-white flex items-center justify-center text-2xl mb-4">✦</div>
+            <div className="w-14 h-14 rounded-2xl bg-[#0F172A] text-white flex items-center justify-center mb-4"><SparkleIcon className="w-7 h-7" /></div>
             <h2 className="text-xl font-semibold text-[#0F172A]">What do you want to know?</h2>
             <p className="text-sm text-[#64748B] mt-1.5 max-w-sm">
               Answers come from your documents, with the source shown. You can also send a photo.
@@ -320,7 +321,7 @@ function AskNexus() {
           >
             {msg.role === "assistant" && (
               <div className="flex items-center gap-2 mb-1.5 ml-1">
-                <span className="w-6 h-6 rounded-full bg-[#0F172A] text-white flex items-center justify-center text-[10px]">✦</span>
+                <span className="w-6 h-6 rounded-full bg-[#0F172A] text-white flex items-center justify-center"><SparkleIcon className="w-3.5 h-3.5" /></span>
                 <span className="text-[11px] font-semibold tracking-wider text-[#0F172A]">NEXUS</span>
               </div>
             )}
@@ -423,28 +424,29 @@ function AskNexus() {
           </div>
         )}
 
-        <div className="flex items-center gap-1 bg-white border border-[#E6E8EE] rounded-2xl shadow-lg shadow-[#0F172A]/5 pl-4 pr-2 py-2">
-          <span className="text-[#2563EB] mr-1">✦</span>
+        <div className="flex items-center gap-1.5 bg-white border border-[#E6E8EE] rounded-2xl shadow-lg shadow-[#0F172A]/5 pl-4 pr-2 py-2
+          focus-within:border-[#2563EB]/40 focus-within:shadow-xl transition-shadow">
+          <SparkleIcon className="w-5 h-5 text-[#2563EB] shrink-0" />
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder={listening ? "Listening…" : "Ask NEXUS anything..."}
-            className="flex-1 py-1.5 bg-transparent text-sm focus:outline-none text-[#1E293B] placeholder-[#94A3B8]"
+            className="flex-1 py-2 bg-transparent text-[15px] focus:outline-none text-[#1E293B] placeholder-[#94A3B8]"
           />
-          <label title="Attach an image" className="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]">
-            📎
+          <label title="Attach an image" className="w-11 h-11 rounded-xl flex items-center justify-center cursor-pointer text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A] transition-colors">
+            <PaperclipIcon className="w-[22px] h-[22px]" />
             <input type="file" accept="image/*" onChange={attachImage} className="hidden" />
           </label>
-          <label title="Take a photo" className="w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A] sm:hidden">
-            📷
+          <label title="Take a photo" className="w-11 h-11 rounded-xl flex items-center justify-center cursor-pointer text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A] transition-colors sm:hidden">
+            <CameraIcon className="w-[22px] h-[22px]" />
             <input type="file" accept="image/*" capture="environment" onChange={attachImage} className="hidden" />
           </label>
           <button
             onClick={toggleListening}
             title={!voiceSupported ? voiceBlockedReason : listening ? "Stop listening" : "Speak your question"}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors ${
               listening
                 ? "bg-[#2563EB] text-white animate-pulse"
                 : voiceSupported
@@ -452,15 +454,15 @@ function AskNexus() {
                 : "text-[#CBD5E1]"
             }`}
           >
-            🎤
+            <MicIcon className="w-[22px] h-[22px]" />
           </button>
           <button
             onClick={handleSend}
             disabled={loading || (!input.trim() && !attachment)}
-            className="w-9 h-9 rounded-xl bg-[#2563EB] text-white flex items-center justify-center hover:bg-[#1D4ED8] disabled:opacity-40 transition-colors"
+            className="w-11 h-11 rounded-xl bg-[#2563EB] text-white flex items-center justify-center hover:bg-[#1D4ED8] disabled:opacity-40 transition-colors"
             aria-label="Send"
           >
-            ↑
+            <ArrowUpIcon className="w-5 h-5" />
           </button>
         </div>
         <p className="text-[10px] text-[#94A3B8] text-center mt-2">

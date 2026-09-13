@@ -81,3 +81,45 @@ export function LogoutIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function PaperclipIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m21 11.5-8.8 8.8a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2a3.5 3.5 0 0 1 5 5l-9.2 9.2a1.5 1.5 0 0 1-2.1-2.1L15.5 7" />
+    </svg>
+  );
+}
+
+export function MicIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" />
+    </svg>
+  );
+}
+
+export function CameraIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7H8l1.5-2h5L16 7h2.5A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5v-9Z" />
+      <circle cx="12" cy="13" r="3.2" />
+    </svg>
+  );
+}
+
+export function ArrowUpIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill={base} stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 19V5M6 11l6-6 6 6" />
+    </svg>
+  );
+}
+
+export function SparkleIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2.5c.4 3.9 2.6 6.1 6.5 6.5-3.9.4-6.1 2.6-6.5 6.5-.4-3.9-2.6-6.1-6.5-6.5 3.9-.4 6.1-2.6 6.5-6.5ZM5.5 14c.2 1.9 1.3 3 3.2 3.2-1.9.2-3 1.3-3.2 3.2-.2-1.9-1.3-3-3.2-3.2 1.9-.2 3-1.3 3.2-3.2Z" />
+    </svg>
+  );
+}

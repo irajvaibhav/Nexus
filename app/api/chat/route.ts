@@ -4,7 +4,7 @@ import { detectConflicts, questionTargetsConflictLabel } from "@/lib/conflicts";
 import { isDocumentChecklistQuestion } from "@/lib/checklist";
 import { getAuthedUser } from "@/lib/require-user";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,7 +12,54 @@ const supabase = createClient(
 );
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+// Chat is short factual lookup over retrieved text, so the small model is
+// plenty. Thinking is off: its hidden tokens count against maxOutputTokens
+// (answers were being cut mid-word) and it multiplied latency several times.
+const model = genAI.getGenerativeModel({
+  model: "gemini-3.1-flash-lite",
+  generationConfig: {
+    maxOutputTokens: 400,
+    temperature: 0.2,
+    thinkingConfig: { thinkingBudget: 0 },
+  } as unknown as import("@google/generative-ai").GenerationConfig,
+});
+
+// Photos need the stronger model's vision, still without thinking.
+const visionModel = genAI.getGenerativeModel({
+  model: "gemini-3.5-flash",
+  generationConfig: {
+    maxOutputTokens: 800,
+    temperature: 0.2,
+    thinkingConfig: { thinkingBudget: 0 },
+  } as unknown as import("@google/generative-ai").GenerationConfig,
+});
+
+// Greetings and chit-chat don't need retrieval or a model call at all.
+const SMALL_TALK = /^\s*(hi+|hii+|hello+|hey+|yo|hola|namaste|sup|good (morning|afternoon|evening)|thanks?( you)?|thank u|ok(ay)?|cool|nice|great|bye|see you|who are you\??|what can you do\??|help\??)\s*[!.?]*\s*$/i;
+
+function smallTalkReply(question: string): string | null {
+  if (!SMALL_TALK.test(question)) return null;
+  const q = question.toLowerCase();
+  if (/thank/.test(q)) return "Anytime. Ask whenever you need something from your documents.";
+  if (/bye|see you/.test(q)) return "See you. I'll keep an eye on your expiry dates.";
+  if (/who are you|what can you do|help/.test(q)) {
+    return "I'm NEXUS. I read the documents in your vault, so you can ask for any number or date, check what's expiring, or find out what you need for something like a loan or a renewal. Try: \"When does my insurance expire?\"";
+  }
+  return "Hi! Ask me anything about your documents. For example: \"What's my PAN number?\" or \"Which documents expire soon?\"";
+}
+
+// The model tells us which documents it actually used, on a final line, so the
+// UI can show only those instead of everything retrieval happened to pull.
+const USED_MARKER = "SOURCES_USED:";
+
+function splitUsedSources(raw: string): { answer: string; used: string[] | null } {
+  const idx = raw.lastIndexOf(USED_MARKER);
+  if (idx === -1) return { answer: raw.trim(), used: null };
+  const answer = raw.slice(0, idx).trim();
+  const tail = raw.slice(idx + USED_MARKER.length).trim();
+  if (!tail || /^none$/i.test(tail)) return { answer, used: [] };
+  return { answer, used: tail.split(/\s*[;|]\s*|\s*,\s*(?=[^,]*\.)/).map((t) => t.trim()).filter(Boolean) };
+}
 
 type Chunk = { chunk_text: string; document_id: string; page_number: number; similarity: number };
 type Attachment = { base64: string; mimeType: string };
@@ -66,7 +113,12 @@ async function getRelatedChunks(question: string, userId: string): Promise<Chunk
   });
 }
 
-async function logChatTurn(question: string, answer: string, sources: unknown, userId: string) {
+function logChatTurn(question: string, answer: string, sources: unknown, userId: string) {
+  // Runs after the response is sent, so the user isn't waiting on two inserts.
+  after(() => persistChatTurn(question, answer, sources, userId));
+}
+
+async function persistChatTurn(question: string, answer: string, sources: unknown, userId: string) {
   await supabase.from("chat_messages").insert([
     { user_id: userId, role: "user", content: question },
     { user_id: userId, role: "assistant", content: answer, sources },
@@ -102,6 +154,12 @@ export async function POST(request: NextRequest) {
       return await buildImageResponse(question || "", attachment, userId);
     }
 
+    const casual = smallTalkReply(question);
+    if (casual) {
+      logChatTurn(question, casual, [], userId);
+      return NextResponse.json({ answer: casual, sources: [] });
+    }
+
     const targetLabel = questionTargetsConflictLabel(question);
     if (targetLabel) {
       const { data: fields } = await supabase
@@ -127,7 +185,7 @@ export async function POST(request: NextRequest) {
           similarity: 100,
         }));
 
-        await logChatTurn(question, answer, sources, userId);
+        logChatTurn(question, answer, sources, userId);
         return NextResponse.json({ answer, sources, conflict: true });
       }
     }
@@ -155,20 +213,20 @@ export async function POST(request: NextRequest) {
           similarity: 100,
         }));
 
-      await logChatTurn(question, result.answer, sources, userId);
+      logChatTurn(question, result.answer, sources, userId);
       return NextResponse.json({ answer: result.answer, sources });
     }
 
-    const questionEmbedding = await generateEmbedding(question);
-
-    const [{ data: chunks, error: rpcError }, relatedChunks] = await Promise.all([
-      supabase.rpc("match_documents", {
-        query_embedding: JSON.stringify(questionEmbedding),
-        match_user_id: userId,
-        match_count: 5,
-      }),
+    const [questionEmbedding, relatedChunks] = await Promise.all([
+      generateEmbedding(question),
       getRelatedChunks(question, userId),
     ]);
+
+    const { data: chunks, error: rpcError } = await supabase.rpc("match_documents", {
+      query_embedding: JSON.stringify(questionEmbedding),
+      match_user_id: userId,
+      match_count: 4,
+    });
 
     if (rpcError) throw rpcError;
 
@@ -228,7 +286,7 @@ RULES:
 
 Answer:`;
 
-  const result = await model.generateContent([
+  const result = await visionModel.generateContent([
     { text: prompt },
     { inlineData: { mimeType: attachment.mimeType, data: attachment.base64 } },
   ]);
@@ -243,7 +301,7 @@ Answer:`;
       similarity: 100,
     }));
 
-  await logChatTurn(
+  logChatTurn(
     question ? `${question} 📷` : "📷 Sent a photo",
     answer,
     sources,
@@ -271,16 +329,15 @@ async function buildResponse(question: string, chunks: Chunk[], userId: string) 
     })
     .join("\n\n---\n\n");
 
-  const prompt = `You are NEXUS, an AI document assistant. Answer the user's question using ONLY the document context provided below.
+  const prompt = `You are NEXUS, a personal document assistant. Answer the user's question from the document context below.
 
 RULES:
-- ONLY use information from the provided context
-- If the answer is not in the context, say "I couldn't find this information in your documents"
-- NEVER guess or make up information
-- Always mention which document the information came from
-- Keep answers concise and direct
-- For sensitive info (PAN, passport, account numbers), show the full value from the document
-- Do not use markdown formatting like ** in your answers
+- Use only the context. If the answer isn't there, say "I couldn't find that in your documents."
+- Never guess or invent a value.
+- Answer in one to three short sentences. No preamble, no markdown, no "(Source: ...)" notes in the text.
+- For sensitive values (PAN, passport, account numbers) give the full value from the document.
+- If the question is general conversation rather than about the documents, reply naturally in one sentence and use no sources.
+- After the answer, on a new final line, write "${USED_MARKER}" followed by the exact file names you actually used, separated by " | ". If you used none, write "${USED_MARKER} NONE".
 
 DOCUMENT CONTEXT:
 ${context}
@@ -290,20 +347,28 @@ USER QUESTION: ${question}
 Answer:`;
 
   const result = await model.generateContent(prompt);
-  const answer = result.response.text();
+  const { answer, used } = splitUsedSources(result.response.text());
 
-  const sources = chunks.map((c) => ({
+  const allSources = chunks.map((c) => ({
     file_name: docMap.get(c.document_id) || "Unknown",
     document_id: c.document_id,
     page_number: c.page_number,
     similarity: Math.round(c.similarity * 100),
   }));
 
-  const uniqueSources = sources.filter(
-    (s, i, arr) => arr.findIndex((x) => x.file_name === s.file_name) === i
+  const dedupe = (list: typeof allSources) =>
+    list.filter((s, i, arr) => arr.findIndex((x) => x.file_name === s.file_name) === i);
+
+  // Prefer the model's own list; fall back to name-mentions in the answer; if
+  // the model said NONE, show nothing.
+  const usedNames = used === null
+    ? allSources.filter((s) => answer.includes(s.file_name)).map((s) => s.file_name)
+    : used;
+  const uniqueSources = dedupe(
+    allSources.filter((s) => usedNames.some((n) => n.toLowerCase() === s.file_name.toLowerCase()))
   );
 
-  await logChatTurn(question, answer, uniqueSources, userId);
+  logChatTurn(question, answer, uniqueSources, userId);
 
   return NextResponse.json({
     answer,

@@ -7,7 +7,7 @@ import { daysLeft, daysLabel } from "@/lib/dates";
 import { docHealth, LOW_CONFIDENCE_THRESHOLD } from "@/lib/doc-status";
 import { detectConflicts, type ConflictGroup } from "@/lib/conflicts";
 import { geocodeCity, getDailyForecast, bestUpcomingDay, weatherEmoji, type DailyForecast } from "@/lib/weather";
-import { DocumentsIcon, ChatIcon, ScanIcon, CheckSquareIcon } from "@/components/icons";
+import { DocumentsIcon, ChatIcon, ScanIcon, CheckSquareIcon, SparkleIcon } from "@/components/icons";
 import { useCallback, useEffect, useState } from "react";
 
 type Deadline = {
@@ -315,7 +315,7 @@ export default function DashboardPage() {
 
             {nearestDeadline && nearestDays !== null && nearestDays <= 30 && (
               <div className="mx-5 mb-5 mt-2 rounded-xl bg-[#F8FAFC] border border-[#E6E8EE] px-4 py-3 flex items-center gap-3 flex-wrap">
-                <span className="w-7 h-7 rounded-full bg-[#EAF2FF] text-[#2563EB] flex items-center justify-center text-sm shrink-0">✦</span>
+                <span className="w-7 h-7 rounded-full bg-[#EAF2FF] text-[#2563EB] flex items-center justify-center shrink-0"><SparkleIcon className="w-4 h-4" /></span>
                 <p className="text-sm text-[#1E293B] flex-1 min-w-[200px]">
                   {suggestedDay
                     ? <>NEXUS suggests <span className="font-semibold">{new Date(`${suggestedDay.date}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" })}</span> for the {nearestDeadline.title.toLowerCase()} renewal. {suggestedDay.description}, {suggestedDay.precipProbability}% rain.</>
