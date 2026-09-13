@@ -272,7 +272,7 @@ function AskNexus() {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-64px)] animate-fade-in-up">
+    <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-72px)] animate-fade-in-up">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Ask NEXUS</h1>
         {messages.length > 0 && (

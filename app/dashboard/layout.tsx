@@ -150,16 +150,22 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      <main className="flex-1 min-h-screen ml-[96px] relative overflow-hidden">
+      {/* The content column scrolls on its own; the Ask bar is a footer outside
+          it, so it stays reachable without ever covering the page. */}
+      <main className="flex-1 ml-[96px] h-screen flex flex-col relative overflow-hidden">
         <div aria-hidden className="blob blob-a blob-faint" />
         <div aria-hidden className="blob blob-b blob-faint" />
-        <div className="relative px-8 pt-8 pb-10 max-w-6xl mx-auto">
-          {children}
+        <div className="relative flex-1 min-h-0 overflow-y-auto">
+          <div className="px-8 pt-8 pb-10 max-w-6xl mx-auto">
+            {children}
+          </div>
+        </div>
 
-          {!onAskPage && (
+        {!onAskPage && (
+          <div className="relative shrink-0 glass border-t border-[#E6E8EE] px-8 py-3">
             <form
               onSubmit={(e) => { e.preventDefault(); submitAsk(); }}
-              className="mt-8 flex items-center gap-2 card pl-4 pr-2 py-2 focus-within:border-[#2563EB]/40 transition-colors"
+              className="max-w-6xl mx-auto flex items-center gap-2 card pl-4 pr-2 py-1.5 focus-within:border-[#2563EB]/40 transition-colors"
             >
               <SparkleIcon className="w-5 h-5 text-[#2563EB] shrink-0" />
               <input
@@ -170,21 +176,21 @@ export default function DashboardLayout({
               />
               <Link
                 href="/dashboard/ask?voice=1"
-                className="hidden sm:flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-[#E6E8EE] text-sm
+                className="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-xl border border-[#E6E8EE] text-sm
                   font-medium text-[#1E293B] hover:bg-[#F8FAFC] transition-colors"
               >
                 <MicIcon className="w-[18px] h-[18px]" /> Voice
               </Link>
               <button
                 type="submit"
-                className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center shadow-md shadow-[#2563EB]/30 hover:shadow-lg transition-shadow"
+                className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white flex items-center justify-center shadow-md shadow-[#2563EB]/30 hover:shadow-lg transition-shadow"
                 aria-label="Ask"
               >
                 <ArrowUpIcon className="w-5 h-5" />
               </button>
             </form>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );
