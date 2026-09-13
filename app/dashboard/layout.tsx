@@ -41,8 +41,8 @@ export default function DashboardLayout({
   useEffect(() => {
     const html = document.documentElement;
     const prev = { html: html.style.overflow, body: document.body.style.overflow };
-    html.style.overflow = "hidden";
-    document.body.style.overflow = "hidden";
+    html.style.overflow = "clip";
+    document.body.style.overflow = "clip";
     window.scrollTo(0, 0);
     return () => {
       html.style.overflow = prev.html;
@@ -84,7 +84,7 @@ export default function DashboardLayout({
   const onAskPage = pathname === "/dashboard/ask" || pathname === "/dashboard";
 
   return (
-    <div className="h-screen overflow-hidden flex bg-[#F6F7F9]">
+    <div className="h-screen overflow-clip flex bg-[#F6F7F9]">
       <aside className="w-[96px] flex flex-col items-center fixed inset-y-0 left-0 bg-white border-r border-[#E6E8EE] z-20 py-4">
         <Link href="/dashboard" title="NEXUS" className="hover:scale-105 transition-transform">
           <NexusMark size={48} />
@@ -173,10 +173,10 @@ export default function DashboardLayout({
 
       {/* The content column scrolls on its own; the Ask bar is a footer outside
           it, so it stays reachable without ever covering the page. */}
-      <main className="flex-1 ml-[96px] h-screen flex flex-col relative overflow-hidden">
+      <main className="flex-1 ml-[96px] h-screen flex flex-col relative overflow-clip">
         <div aria-hidden className="blob blob-a blob-faint" />
         <div aria-hidden className="blob blob-b blob-faint" />
-        <div ref={scrollRef} className={`relative flex-1 min-h-0 ${pathname === "/dashboard/ask" ? "overflow-hidden" : "overflow-y-auto"}`}>
+        <div ref={scrollRef} className={`relative flex-1 min-h-0 ${pathname === "/dashboard/ask" ? "overflow-clip" : "overflow-y-auto"}`}>
           <div className={`px-8 pt-8 max-w-6xl mx-auto ${pathname === "/dashboard/ask" ? "h-full pb-4" : "pb-10"}`}>
             {children}
           </div>

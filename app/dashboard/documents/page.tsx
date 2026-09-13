@@ -470,7 +470,7 @@ function DocumentsPageInner() {
         </div>
       </div>
 
-      {(showUpload || docs.length === 0 || dragOver) && (
+      {(showUpload || (!loadingList && docs.length === 0) || dragOver) && (
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}

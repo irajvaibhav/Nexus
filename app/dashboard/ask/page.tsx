@@ -73,6 +73,7 @@ function AskNexus() {
   const [voiceBlockedReason, setVoiceBlockedReason] = useState("");
   const [voiceError, setVoiceError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   useEffect(() => {
@@ -154,8 +155,11 @@ function AskNexus() {
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    // Scroll only the message list. scrollIntoView would also scroll every
+    // ancestor, which shoved the whole page frame upward.
+    const list = listRef.current;
+    if (list) list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
 
   function toggleListening() {
     const recognition = recognitionRef.current;
@@ -286,7 +290,7 @@ function AskNexus() {
         )}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-4 pr-1">
+      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-4 pr-1">
         {loadingHistory ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-sm text-[#64748B]/60">Loading chat history...</p>
