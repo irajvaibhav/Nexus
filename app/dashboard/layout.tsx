@@ -146,7 +146,7 @@ export default function DashboardLayout({
             <>
               <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
               <div role="menu" className="absolute left-[88px] bottom-2 z-40 w-64 card p-2 shadow-2xl animate-fade-in-up">
-                <div className="px-3 py-2.5 flex items-center gap-3">
+                <Link href="/dashboard/profile" onClick={() => setMenuOpen(false)} className="px-3 py-2.5 flex items-center gap-3 rounded-xl hover:bg-[#F1F5F9]">
                   <span className="w-9 h-9 rounded-full bg-gradient-to-br from-[#2563EB] to-[#4F46E5] text-white text-sm font-bold flex items-center justify-center">
                     {name.charAt(0).toUpperCase()}
                   </span>
@@ -154,8 +154,11 @@ export default function DashboardLayout({
                     <p className="text-sm font-semibold text-[#0F172A] truncate">{name}</p>
                     <p className="text-xs text-[#64748B] truncate">{email}</p>
                   </div>
-                </div>
+                </Link>
                 <div className="h-px bg-[#E6E8EE] my-1" />
+                <Link href="/dashboard/profile" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-[#1E293B] hover:bg-[#F1F5F9]">
+                  <span className="w-4 h-4 rounded-full bg-[#2563EB] text-white text-[9px] font-bold flex items-center justify-center">{name.charAt(0).toUpperCase()}</span> Profile
+                </Link>
                 <Link href="/dashboard/settings" onClick={() => setMenuOpen(false)} className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-[#1E293B] hover:bg-[#F1F5F9]">
                   <SlidersIcon className="w-4 h-4 text-[#64748B]" /> Settings
                 </Link>
