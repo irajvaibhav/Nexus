@@ -586,7 +586,12 @@ function DocumentsPageInner() {
       {jobs.length > 0 && (
         <div className="mt-4 space-y-3">
           {jobs.map((job) => (
-            <UploadJobCard key={job.id} job={job} onDismiss={() => dismissJob(job.id)} />
+            <UploadJobCard
+              key={job.id}
+              job={job}
+              onDismiss={() => dismissJob(job.id)}
+              onRetry={job.documentId ? () => { dismissJob(job.id); retryProcessing({ id: job.documentId!, file_name: job.fileName } as Doc); } : undefined}
+            />
           ))}
         </div>
       )}
@@ -831,7 +836,7 @@ function Spinner() {
   );
 }
 
-function UploadJobCard({ job, onDismiss }: { job: UploadJob; onDismiss: () => void }) {
+function UploadJobCard({ job, onDismiss, onRetry }: { job: UploadJob; onDismiss: () => void; onRetry?: () => void }) {
   const current = stepIndex(job.stage);
   const failed = job.stage === "failed";
   const done = job.stage === "ready";
@@ -862,6 +867,11 @@ function UploadJobCard({ job, onDismiss }: { job: UploadJob; onDismiss: () => vo
             {headline}
           </p>
           {failed && job.error && <p className="text-xs text-[#64748B] mt-1">{job.error}</p>}
+          {failed && onRetry && (
+            <button onClick={onRetry} className="mt-2 text-xs px-3 py-1.5 rounded-full bg-[#0F172A] text-white font-semibold hover:bg-[#1E293B]">
+              Try again
+            </button>
+          )}
           {done && job.summary && <p className="text-xs text-[#64748B] mt-1">{job.summary}</p>}
         </div>
         {(failed || done) && (

@@ -14,27 +14,30 @@ const fallbacks = [
   genAI.getGenerativeModel({ model: "gemini-2.5-flash" }),
 ];
 
-function isRateLimit(err: unknown): boolean {
+// Both quota (429) and Google-side overload (503) are transient and worth
+// trying another model for; anything else is a real error.
+function isTransient(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
-  return /429|Too Many Requests|quota|RESOURCE_EXHAUSTED/i.test(msg);
+  return /429|503|Too Many Requests|quota|RESOURCE_EXHAUSTED|Service Unavailable|high demand|overloaded|UNAVAILABLE/i.test(msg);
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function generate(request: string | Array<string | Part> | GenerateContentRequest): Promise<GenerateContentResult> {
-  try {
-    return await primary.generateContent(request);
-  } catch (err) {
-    if (!isRateLimit(err)) throw err;
-    let last: unknown = err;
-    for (const model of fallbacks) {
+  let last: unknown;
+  const chain = [primary, ...fallbacks];
+  for (let round = 0; round < 2; round++) {
+    for (const model of chain) {
       try {
         return await model.generateContent(request);
       } catch (e) {
         last = e;
-        if (!isRateLimit(e)) throw e;
+        if (!isTransient(e)) throw e;
       }
     }
-    throw new Error("NEXUS is busy right now (AI quota reached). Please try again in a minute.", { cause: last });
+    await sleep(1500);
   }
+  throw new Error("NEXUS is busy right now (the AI service is overloaded). Please try again in a minute.", { cause: last });
 }
 
 export const flashModel = { generateContent: generate };

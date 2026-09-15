@@ -220,7 +220,15 @@ export async function POST(request: NextRequest) {
           duplicate_of: duplicateOf,
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Processing failed";
+        const raw = err instanceof Error ? err.message : "Processing failed";
+        // Never show the SDK's URL-and-status dump; say what happened and what to do.
+        const message = /GoogleGenerativeAI|generativelanguage/.test(raw)
+          ? /503|high demand|overloaded|UNAVAILABLE/i.test(raw)
+            ? "The AI service is overloaded right now. Try again in a minute."
+            : /429|quota|RESOURCE_EXHAUSTED/i.test(raw)
+            ? "NEXUS is busy (AI quota reached). Try again in a minute."
+            : "NEXUS couldn't read this file. Try again, or upload a clearer copy."
+          : raw;
         // Leaving the row as "processing" would show "Reading…" forever.
         await supabase.from("documents").update({ status: "failed" }).eq("id", documentId);
         send({ stage: "failed", error: message });
