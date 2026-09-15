@@ -5,6 +5,9 @@ import { isDocumentChecklistQuestion } from "@/lib/checklist";
 import { getAuthedUser } from "@/lib/require-user";
 import { NextRequest, NextResponse, after } from "next/server";
 
+// Walking the model chain can take a while when Google is throttling.
+export const maxDuration = 120;
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!

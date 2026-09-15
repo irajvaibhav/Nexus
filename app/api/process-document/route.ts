@@ -4,6 +4,9 @@ import { BUILT_IN_CATEGORIES } from "@/lib/categories";
 import { getAuthedUser } from "@/lib/require-user";
 import { NextRequest, NextResponse } from "next/server";
 
+// Walking the model chain can take a while when Google is throttling.
+export const maxDuration = 120;
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -226,7 +229,7 @@ export async function POST(request: NextRequest) {
           ? /503|high demand|overloaded|UNAVAILABLE/i.test(raw)
             ? "The AI service is overloaded right now. Try again in a minute."
             : /429|quota|RESOURCE_EXHAUSTED/i.test(raw)
-            ? "NEXUS is busy (AI quota reached). Try again in a minute."
+            ? "The AI key's daily quota is used up. Enable billing on the Gemini key, or try again tomorrow."
             : "NEXUS couldn't read this file. Try again, or upload a clearer copy."
           : raw;
         // Leaving the row as "processing" would show "Reading…" forever.

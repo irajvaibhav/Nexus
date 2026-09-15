@@ -16,7 +16,15 @@ export const MODEL_CHAIN = [
   "gemini-3.6-flash",
   "gemini-3.5-flash",
   "gemini-3-flash-preview",
+  "gemini-flash-latest",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-lite-latest",
 ];
+
+// Pause between full passes over the chain. Google's "high demand" spikes
+// usually clear within seconds, so a few short waits beat one long one.
+const ROUND_BACKOFF_MS = [1500, 4000, 8000];
 
 type GenOpts = {
   generationConfig?: Record<string, unknown>;
@@ -38,6 +46,34 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   });
 }
 
+function shortError(e: unknown): string {
+  const m = e instanceof Error ? e.message : String(e);
+  return m.replace(/^.*generateContent:\s*/, "").slice(0, 140);
+}
+
+// Some models reject thinkingConfig outright (400). Drop it and try once
+// more rather than skipping a model that would otherwise have answered.
+async function callModel(
+  name: string,
+  config: Record<string, unknown>,
+  request: string | Array<string | Part> | GenerateContentRequest,
+  timeoutMs: number
+): Promise<GenerateContentResult> {
+  const run = (cfg: Record<string, unknown>) =>
+    withTimeout(genAI.getGenerativeModel({ model: name, generationConfig: cfg as never }).generateContent(request), timeoutMs, name);
+  try {
+    return await run(config);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/400|INVALID_ARGUMENT|invalid argument/i.test(msg) && "thinkingConfig" in config) {
+      const { thinkingConfig: _drop, ...rest } = config;
+      void _drop;
+      return run(rest);
+    }
+    throw e;
+  }
+}
+
 export async function generateWith(
   request: string | Array<string | Part> | GenerateContentRequest,
   opts: GenOpts = {}
@@ -46,20 +82,24 @@ export async function generateWith(
   const config = { ...noThinking, ...(opts.generationConfig || {}) };
   const timeoutMs = opts.timeoutMs ?? 45000;
   let last: unknown;
-  for (let round = 0; round < 2; round++) {
+  let sawQuota = false;
+  for (let round = 0; round <= ROUND_BACKOFF_MS.length; round++) {
     for (const name of models) {
-      const model = genAI.getGenerativeModel({ model: name, generationConfig: config as never });
       try {
-        return await withTimeout(model.generateContent(request), timeoutMs, name);
+        return await callModel(name, config, request, timeoutMs);
       } catch (e) {
         last = e;
         if (!isTransient(e)) throw e;
-        console.warn(`[gemini] ${name} unavailable: ${(e as Error).message.slice(0, 120)}`);
+        if (/429|quota|RESOURCE_EXHAUSTED/i.test(shortError(e))) sawQuota = true;
+        console.warn(`[gemini] ${name} unavailable: ${shortError(e)}`);
       }
     }
-    await sleep(1500);
+    if (round < ROUND_BACKOFF_MS.length) await sleep(ROUND_BACKOFF_MS[round]);
   }
-  throw new Error("NEXUS is busy right now (the AI service is overloaded). Please try again in a minute.", { cause: last });
+  const quota = sawQuota
+    ? "The AI key's daily quota is used up (Gemini free tier allows 20 requests per model per day). Enable billing on the Gemini key, or try again tomorrow."
+    : "NEXUS is busy right now (the AI service is overloaded). Please try again in a minute.";
+  throw new Error(quota, { cause: last });
 }
 
 async function generate(request: string | Array<string | Part> | GenerateContentRequest): Promise<GenerateContentResult> {
