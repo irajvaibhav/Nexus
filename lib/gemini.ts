@@ -6,38 +6,64 @@ import type { GenerateContentRequest, GenerateContentResult, Part } from "@googl
 
 const noThinking = { thinkingConfig: { thinkingBudget: 0 } } as unknown as Record<string, unknown>;
 
-const primary = genAI.getGenerativeModel({ model: "gemini-3.5-flash", generationConfig: noThinking });
-// Same family, separate quota bucket. Used when the primary is rate-limited
-// so an upload never fails just because a minute was busy.
-const fallbacks = [
-  genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: noThinking }),
-  genAI.getGenerativeModel({ model: "gemini-2.5-flash" }),
+// Newest first. Google throttles individual models (503 "high demand") and
+// retires old ones (2.5-flash is gone), so every call walks this list until
+// one answers. Each model gets a hard time limit so a slow one is skipped
+// rather than waited on.
+export const MODEL_CHAIN = [
+  "gemini-3.8-flash",
+  "gemini-3.7-flash",
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-3-flash-preview",
 ];
 
-// Both quota (429) and Google-side overload (503) are transient and worth
-// trying another model for; anything else is a real error.
+type GenOpts = {
+  generationConfig?: Record<string, unknown>;
+  timeoutMs?: number;
+  models?: string[];
+};
+
 function isTransient(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
-  return /429|503|Too Many Requests|quota|RESOURCE_EXHAUSTED|Service Unavailable|high demand|overloaded|UNAVAILABLE/i.test(msg);
+  return /429|503|404|Too Many Requests|quota|RESOURCE_EXHAUSTED|Service Unavailable|high demand|overloaded|UNAVAILABLE|not found|timed out|fetch failed/i.test(msg);
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function generate(request: string | Array<string | Part> | GenerateContentRequest): Promise<GenerateContentResult> {
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+  });
+}
+
+export async function generateWith(
+  request: string | Array<string | Part> | GenerateContentRequest,
+  opts: GenOpts = {}
+): Promise<GenerateContentResult> {
+  const models = opts.models || MODEL_CHAIN;
+  const config = { ...noThinking, ...(opts.generationConfig || {}) };
+  const timeoutMs = opts.timeoutMs ?? 45000;
   let last: unknown;
-  const chain = [primary, ...fallbacks];
   for (let round = 0; round < 2; round++) {
-    for (const model of chain) {
+    for (const name of models) {
+      const model = genAI.getGenerativeModel({ model: name, generationConfig: config as never });
       try {
-        return await model.generateContent(request);
+        return await withTimeout(model.generateContent(request), timeoutMs, name);
       } catch (e) {
         last = e;
         if (!isTransient(e)) throw e;
+        console.warn(`[gemini] ${name} unavailable: ${(e as Error).message.slice(0, 120)}`);
       }
     }
     await sleep(1500);
   }
   throw new Error("NEXUS is busy right now (the AI service is overloaded). Please try again in a minute.", { cause: last });
+}
+
+async function generate(request: string | Array<string | Part> | GenerateContentRequest): Promise<GenerateContentResult> {
+  return generateWith(request);
 }
 
 export const flashModel = { generateContent: generate };

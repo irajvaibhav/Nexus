@@ -276,7 +276,7 @@ lose the link. Deleting the account removes everything.
 
 **Upload and processing.** The browser uploads straight to Supabase Storage with
 a progress bar, then calls `/api/process-document`, which streams NDJSON stage
-events back while it works. Gemini (`gemini-3.5-flash`) reads the file, returns
+events back while it works. Gemini (`gemini-3.8-flash`, with fallbacks) reads the file, returns
 structured fields with confidence and page numbers, the document type, any
 expiry dates, and named entities. The text is chunked and embedded
 (`gemini-embedding-001`) into `document_chunks` for retrieval. If anything
@@ -286,7 +286,7 @@ earlier partial rows first.
 **Ask NEXUS (retrieval-augmented generation).** The question is embedded and
 matched against your chunks with a `match_documents` vector search (pgvector),
 merged with chunks from documents named in the question, and sent to a fast,
-no-thinking model (`gemini-3.1-flash-lite`) with instructions to answer only
+no-thinking model (same chain, 20s limit per model) with instructions to answer only
 from what it was given. The model marks which sources it actually used so the
 UI only shows relevant chips. Small talk short-circuits without touching the
 vault. Photos go to the vision model with your extracted fields as context.
@@ -313,7 +313,7 @@ with the exclusive end date handled correctly and reminders attached.
 geocodes with BigDataCloud.
 
 **Rate limits.** Gemini calls go through `lib/gemini.ts`, which falls back
-through `gemini-3.1-flash-lite` and `gemini-2.5-flash` on a 429.
+the chain 3.8-flash → 3.7 → 3.6 → 3.5 → 3-flash-preview on a 429, 503 or timeout.
 
 ---
 

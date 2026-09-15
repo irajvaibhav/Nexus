@@ -1,9 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import { generateEmbedding, generateDocumentChecklist } from "@/lib/gemini";
+import { generateEmbedding, generateDocumentChecklist, generateWith } from "@/lib/gemini";
 import { detectConflicts, questionTargetsConflictLabel } from "@/lib/conflicts";
 import { isDocumentChecklistQuestion } from "@/lib/checklist";
 import { getAuthedUser } from "@/lib/require-user";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse, after } from "next/server";
 
 const supabase = createClient(
@@ -11,28 +10,19 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-// Chat is short factual lookup over retrieved text, so the small model is
-// plenty. Thinking is off: its hidden tokens count against maxOutputTokens
-// (answers were being cut mid-word) and it multiplied latency several times.
-const model = genAI.getGenerativeModel({
-  model: "gemini-3.1-flash-lite",
-  generationConfig: {
-    maxOutputTokens: 400,
-    temperature: 0.2,
-    thinkingConfig: { thinkingBudget: 0 },
-  } as unknown as import("@google/generative-ai").GenerationConfig,
-});
+// Chat is short factual lookup over retrieved text. Thinking is off: its
+// hidden tokens count against maxOutputTokens (answers were being cut
+// mid-word) and it multiplied latency several times. Both go through the
+// shared model chain so a throttled model never fails a question.
+const model = {
+  generateContent: (req: Parameters<typeof generateWith>[0]) =>
+    generateWith(req, { generationConfig: { maxOutputTokens: 400, temperature: 0.2 }, timeoutMs: 20000 }),
+};
 
-// Photos need the stronger model's vision, still without thinking.
-const visionModel = genAI.getGenerativeModel({
-  model: "gemini-3.5-flash",
-  generationConfig: {
-    maxOutputTokens: 800,
-    temperature: 0.2,
-    thinkingConfig: { thinkingBudget: 0 },
-  } as unknown as import("@google/generative-ai").GenerationConfig,
-});
+const visionModel = {
+  generateContent: (req: Parameters<typeof generateWith>[0]) =>
+    generateWith(req, { generationConfig: { maxOutputTokens: 800, temperature: 0.2 }, timeoutMs: 40000 }),
+};
 
 // Greetings and chit-chat don't need retrieval or a model call at all.
 const SMALL_TALK = /^\s*(hi+|hii+|hello+|hey+|yo|hola|namaste|sup|good (morning|afternoon|evening)|thanks?( you)?|thank u|ok(ay)?|cool|nice|great|bye|see you|who are you\??|what can you do\??|help\??)\s*[!.?]*\s*$/i;
